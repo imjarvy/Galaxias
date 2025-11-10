@@ -5,21 +5,18 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 from matplotlib.backends.backend_agg import FigureCanvasAgg
 from typing import List, Optional, Dict
-from src.models import Star, Route, SpaceMap, SpaceshipDonkey
+from src.models import Star, Route, SpaceMap, BurroAstronauta
 import json
 
 
 class SpaceVisualizer:
-    """Visualize the space map, routes, and spaceship journey."""
+    """Visualize the space map, routes, and donkey journey."""
     
     def __init__(self, space_map: SpaceMap):
         self.space_map = space_map
         self.star_colors = {
-            'red_giant': '#FF4444',
-            'blue_giant': '#4444FF',
-            'blue_supergiant': '#2222CC',
-            'main_sequence': '#FFFF44',
-            'giant': '#FF8844'
+            'normal': '#FFFF44',
+            'hypergiant': '#FF00FF'
         }
     
     def plot_space_map(self, 
@@ -32,7 +29,7 @@ class SpaceVisualizer:
         
         Args:
             highlight_path: Optional path to highlight
-            donkey_location: Current location of the donkey spaceship
+            donkey_location: Current location of the donkey
             save_path: If provided, save the figure to this path
             show: Whether to display the plot
         """
@@ -47,9 +44,18 @@ class SpaceVisualizer:
                 # Blocked routes in red dashed
                 ax.plot([x1, x2], [y1, y2], 'r--', alpha=0.3, linewidth=1)
             else:
-                # Normal routes
+                # Normal routes - color by danger level
+                if route.danger_level <= 1:
+                    color = 'green'
+                elif route.danger_level <= 2:
+                    color = 'yellow'
+                elif route.danger_level <= 3:
+                    color = 'orange'
+                else:
+                    color = 'red'
+                
                 alpha = 0.3 + (route.danger_level * 0.1)
-                ax.plot([x1, x2], [y1, y2], 'gray', alpha=alpha, linewidth=1)
+                ax.plot([x1, x2], [y1, y2], color, alpha=alpha, linewidth=1)
         
         # Highlight path if provided
         if highlight_path and len(highlight_path) > 1:
@@ -59,26 +65,28 @@ class SpaceVisualizer:
                 ax.plot([x1, x2], [y1, y2], 'cyan', linewidth=3, alpha=0.8)
                 # Add arrow
                 dx, dy = x2 - x1, y2 - y1
-                ax.arrow(x1, y1, dx*0.8, dy*0.8, 
-                        head_width=15, head_length=10, 
-                        fc='cyan', ec='cyan', alpha=0.6)
+                if abs(dx) > 1 or abs(dy) > 1:  # Only add arrow if significant distance
+                    ax.arrow(x1, y1, dx*0.8, dy*0.8, 
+                            head_width=8, head_length=6, 
+                            fc='cyan', ec='cyan', alpha=0.6)
         
         # Plot stars
         for star in self.space_map.get_all_stars_list():
-            color = self.star_colors.get(star.type, '#FFFFFF')
-            size = 200
+            color = self.star_colors['hypergiant'] if star.hypergiant else self.star_colors['normal']
+            size = max(100, star.radius * 300)  # Size based on radius
             
             # Highlight if in path
             if highlight_path and star in highlight_path:
-                size = 300
+                size *= 1.5
                 ax.scatter(star.x, star.y, s=size, c=color, 
                           edgecolors='cyan', linewidth=3, zorder=5)
             else:
                 ax.scatter(star.x, star.y, s=size, c=color, 
                           edgecolors='white', linewidth=1, zorder=5)
             
-            # Add star name
-            ax.annotate(star.name, (star.x, star.y), 
+            # Add star label
+            ax.annotate(f"{star.label}\nE:{star.amount_of_energy}", 
+                       (star.x, star.y), 
                        xytext=(5, 5), textcoords='offset points',
                        fontsize=8, color='white',
                        bbox=dict(boxstyle='round,pad=0.3', 
@@ -89,7 +97,7 @@ class SpaceVisualizer:
             ax.scatter(donkey_location.x, donkey_location.y, 
                       s=400, marker='*', c='gold', 
                       edgecolors='orange', linewidth=2, zorder=10)
-            ax.annotate('🫏 Burro Astronauta', 
+            ax.annotate('Burro Astronauta', 
                        (donkey_location.x, donkey_location.y),
                        xytext=(10, -20), textcoords='offset points',
                        fontsize=10, color='gold', fontweight='bold',
@@ -98,11 +106,12 @@ class SpaceVisualizer:
         
         # Create legend
         legend_elements = [
-            mpatches.Patch(color='#FF4444', label='Red Giant'),
-            mpatches.Patch(color='#4444FF', label='Blue Giant'),
-            mpatches.Patch(color='#2222CC', label='Blue Supergiant'),
-            mpatches.Patch(color='#FFFF44', label='Main Sequence'),
-            mpatches.Patch(color='#FF8844', label='Giant'),
+            mpatches.Patch(color='#FFFF44', label='Estrella Normal'),
+            mpatches.Patch(color='#FF00FF', label='Hipergigante'),
+            plt.Line2D([0], [0], color='green', label='Ruta Segura (Peligro 1)'),
+            plt.Line2D([0], [0], color='yellow', label='Ruta Moderada (Peligro 2)'),
+            plt.Line2D([0], [0], color='orange', label='Ruta Peligrosa (Peligro 3)'),
+            plt.Line2D([0], [0], color='red', label='Ruta Extrema (Peligro 4+)'),
         ]
         ax.legend(handles=legend_elements, loc='upper right', 
                  facecolor='black', edgecolor='white', 
@@ -110,10 +119,10 @@ class SpaceVisualizer:
         
         ax.set_facecolor('black')
         fig.patch.set_facecolor('#000033')
-        ax.set_title('Galaxias - Mapa Estelar de la Vía Láctea', 
+        ax.set_title('Galaxias - Mapa de Constelaciones', 
                     color='white', fontsize=16, fontweight='bold')
-        ax.set_xlabel('Coordenada X (años luz)', color='white')
-        ax.set_ylabel('Coordenada Y (años luz)', color='white')
+        ax.set_xlabel('Coordenada X', color='white')
+        ax.set_ylabel('Coordenada Y', color='white')
         ax.tick_params(colors='white')
         ax.grid(True, alpha=0.2, color='white')
         
@@ -128,34 +137,37 @@ class SpaceVisualizer:
         return fig
     
     def plot_resource_status(self, 
-                            donkey: SpaceshipDonkey,
+                            burro: BurroAstronauta,
                             save_path: Optional[str] = None,
                             show: bool = True) -> plt.Figure:
-        """Plot the current resource status of the spaceship donkey."""
+        """Plot the current resource status of the burro astronauta."""
         fig, ax = plt.subplots(figsize=(10, 6))
         
-        resources = ['Salud', 'Combustible', 'Comida', 'Oxígeno']
-        values = [donkey.health, donkey.fuel/10, donkey.food, donkey.oxygen]
-        colors = ['#FF4444', '#44FF44', '#FFAA44', '#4444FF']
+        resources = ['Energía', 'Pasto (kg)', 'Edad']
+        values = [burro.current_energy, burro.current_pasto/10, burro.start_age*2]  # Scale for visibility
+        colors = ['#FF4444', '#44FF44', '#4444FF']
         
         bars = ax.barh(resources, values, color=colors, edgecolor='white', linewidth=2)
         
         # Add value labels
         for i, (bar, value) in enumerate(zip(bars, values)):
-            if i == 0:  # Health
+            if i == 0:  # Energy
                 actual_value = value
-            elif i == 1:  # Fuel
+                unit = '%'
+            elif i == 1:  # Grass
                 actual_value = value * 10
-            else:
-                actual_value = value
+                unit = 'kg'
+            else:  # Age
+                actual_value = value // 2
+                unit = 'años'
             
             ax.text(bar.get_width() + 2, bar.get_y() + bar.get_height()/2,
-                   f'{actual_value:.1f}',
+                   f'{actual_value:.0f}{unit}',
                    va='center', color='white', fontweight='bold')
         
         ax.set_facecolor('#000033')
         fig.patch.set_facecolor('#000066')
-        ax.set_title(f'Estado del Burro Astronauta: {donkey.name}',
+        ax.set_title(f'Estado del Burro Astronauta: {burro.name}',
                     color='white', fontsize=14, fontweight='bold')
         ax.set_xlabel('Cantidad', color='white')
         ax.tick_params(colors='white')
@@ -175,7 +187,7 @@ class SpaceVisualizer:
         return fig
     
     def plot_journey_report(self,
-                           donkey: SpaceshipDonkey,
+                           burro: BurroAstronauta,
                            path_stats: Dict,
                            save_path: Optional[str] = None,
                            show: bool = True) -> plt.Figure:
@@ -188,23 +200,23 @@ class SpaceVisualizer:
         ax1.axis('off')
         
         info_text = f"""
-REPORTE DE VIAJE ESPACIAL
-{'='*40}
+        REPORTE DE VIAJE ESPACIAL
+        {'='*40}
 
-Ruta Recorrida:
-{' → '.join(path_stats.get('path_stars', ['N/A']))}
+        Ruta Recorrida:
+        {' → '.join(path_stats.get('path_stars', ['N/A']))}
 
-Estadísticas del Viaje:
-- Saltos Totales: {path_stats.get('num_jumps', 0)}
-- Distancia Total: {path_stats.get('total_distance', 0):.2f} unidades
-- Nivel de Peligro: {path_stats.get('total_danger', 0)}
+        Estadísticas del Viaje:
+        - Saltos Totales: {path_stats.get('num_jumps', 0)}
+        - Distancia Total: {path_stats.get('total_distance', 0):.2f} unidades
+        - Nivel de Peligro: {path_stats.get('total_danger', 0)}
 
-Recursos Consumidos:
-- Combustible: {path_stats.get('total_fuel_needed', 0):.2f}
-- Comida: {path_stats.get('total_food_needed', 0):.2f}
-- Oxígeno: {path_stats.get('total_oxygen_needed', 0):.2f}
-- Pérdida de Salud: {path_stats.get('estimated_health_loss', 0):.2f}
-        """
+        Recursos:
+        - Energía Necesaria: {path_stats.get('total_energy_needed', 0):.2f}
+        - Pasto Necesario: {path_stats.get('total_grass_needed', 0):.2f} kg
+        - Energía Ganada: {path_stats.get('total_energy_gained', 0):.2f}
+        - Balance Neto: {path_stats.get('net_energy', 0):.2f}
+                """
         
         ax1.text(0.05, 0.95, info_text, transform=ax1.transAxes,
                 fontsize=10, verticalalignment='top',
@@ -213,16 +225,23 @@ Recursos Consumidos:
         
         # Top right: Current resources bar chart
         ax2 = fig.add_subplot(gs[0, 1])
-        resources = ['Salud', 'Combustible\n(×10)', 'Comida', 'Oxígeno']
-        values = [donkey.health, donkey.fuel/10, donkey.food, donkey.oxygen]
-        colors = ['#FF4444', '#44FF44', '#FFAA44', '#4444FF']
+        resources = ['Energía', 'Pasto\n(×10)', 'Edad']
+        values = [burro.current_energy, burro.current_pasto/10, burro.start_age*2]
+        colors = ['#FF4444', '#44FF44', '#4444FF']
         
         bars = ax2.bar(resources, values, color=colors, edgecolor='white', linewidth=2)
         
-        for bar, value in zip(bars, values):
+        for i, (bar, value) in enumerate(zip(bars, values)):
             height = bar.get_height()
+            if i == 0:  # Energy
+                display_value = f'{value:.0f}%'
+            elif i == 1:  # Grass
+                display_value = f'{value*10:.0f}kg'
+            else:  # Age
+                display_value = f'{value//2:.0f}años'
+            
             ax2.text(bar.get_x() + bar.get_width()/2., height,
-                    f'{value:.1f}',
+                    display_value,
                     ha='center', va='bottom', color='white', fontweight='bold')
         
         ax2.set_facecolor('#000033')
@@ -239,9 +258,11 @@ Recursos Consumidos:
         ax3.axis('off')
         
         history_text = "HISTORIAL DE VIAJE\n" + "="*40 + "\n\n"
-        if donkey.journey_history:
-            for i, star in enumerate(donkey.journey_history, 1):
-                history_text += f"{i}. {star.name} ({star.type})\n"
+        if burro.journey_history:
+            for i, star in enumerate(burro.journey_history, 1):
+                star_type = "⭐" if star.hypergiant else "✨"
+                history_text += f"{i}. {star_type} {star.label}\n"
+                history_text += f"   Energía: {star.amount_of_energy}, Radio: {star.radius:.1f}\n"
         else:
             history_text += "Sin historial de viaje aún."
         
@@ -254,25 +275,28 @@ Recursos Consumidos:
         ax4 = fig.add_subplot(gs[1, 1])
         ax4.axis('off')
         
-        status = "✅ Vivo" if donkey.is_alive() else "❌ Muerto"
-        fuel_status = "✅" if donkey.fuel > 100 else "⚠️" if donkey.fuel > 50 else "❌"
-        health_status = "✅" if donkey.health > 70 else "⚠️" if donkey.health > 30 else "❌"
+        # Status indicators
+        energy_status = "EXCELENTE" if burro.current_energy > 75 else "BUENO" if burro.current_energy > 50 else "BAJO"
+        grass_status = "SUFICIENTE" if burro.current_pasto > 100 else "ADVERTENCIA" if burro.current_pasto > 50 else "CRÍTICO"
+        health_status = burro.estado_salud.upper()
         
         status_text = f"""
-ESTADO DEL BURRO ASTRONAUTA
-{'='*40}
+        ESTADO DEL BURRO ASTRONAUTA
+        {'='*40}
 
-Estado General: {status}
+        Estado General: {health_status}
+        Energía: {burro.current_energy}% [{energy_status}]
+        Pasto: {burro.current_pasto}kg [{grass_status}]
+        Edad: {burro.start_age} años
 
-Indicadores:
-{health_status} Salud: {donkey.health:.1f}%
-{fuel_status} Combustible: {donkey.fuel:.1f}
-{'✅' if donkey.oxygen > 50 else '⚠️'} Oxígeno: {donkey.oxygen:.1f}%
-{'✅' if donkey.food > 20 else '⚠️'} Comida: {donkey.food:.1f}
+        Capacidades:
+        - Puede viajar: {'SÍ' if burro.current_energy > 10 else 'NO'}
+        - Puede comer: {'SÍ' if burro.current_pasto > 5 else 'NO'}
+        - Estado vital: {'VIVO' if burro.is_alive() else 'MUERTO'}
 
-Ubicación Actual:
-{donkey.current_location.name if donkey.current_location else 'En tránsito'}
-        """
+        Ubicación Actual:
+        {burro.current_location.label if burro.current_location else 'Desconocida'}
+                """
         
         ax4.text(0.05, 0.95, status_text, transform=ax4.transAxes,
                 fontsize=10, verticalalignment='top',
@@ -280,7 +304,7 @@ Ubicación Actual:
                 bbox=dict(boxstyle='round', facecolor='#000066', alpha=0.8))
         
         fig.patch.set_facecolor('#000033')
-        fig.suptitle('🫏 Galaxias - Reporte de Viaje Espacial 🚀',
+        fig.suptitle('Galaxias - Reporte de Viaje del Burro Astronauta',
                     color='white', fontsize=16, fontweight='bold')
         
         if save_path:

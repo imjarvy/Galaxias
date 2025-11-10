@@ -1,12 +1,4 @@
-{
-  "spaceship_donkey": {
-    "name": "Burro Astronauta",
-    "initial_health": 100,
-    "initial_fuel": 1000,
-    "initial_food": 50,
-    "initial_oxygen": 100
-  },
-  "consumption_rates": {
+{"consumption_rates": {
     "fuel_per_unit_distance": 2,
     "food_per_unit_distance": 0.1,
     "oxygen_per_unit_distance": 0.5,

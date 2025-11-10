@@ -28,10 +28,6 @@ class RouteCalculator:
         # Visited set
         visited = set()
         
-        rates = self.config['consumption_rates']
-        fuel_rate = rates['fuel_per_unit_distance']
-        danger_penalty = rates['health_decay_per_danger'] * 10
-        
         while pq:
             current_cost, current_id = heapq.heappop(pq)
             
@@ -66,8 +62,8 @@ class RouteCalculator:
                 if neighbor.id in visited:
                     continue
                 
-                # Calculate cost
-                edge_cost = route.calculate_cost(fuel_rate, danger_penalty)
+                # Calculate cost using simplified approach
+                edge_cost = route.distance + (route.danger_level * 10)
                 new_cost = current_cost + edge_cost
                 
                 if new_cost < distances[neighbor.id]:
@@ -84,16 +80,16 @@ class RouteCalculator:
             return {
                 'total_distance': 0,
                 'total_danger': 0,
-                'total_fuel_needed': 0,
-                'total_food_needed': 0,
-                'total_oxygen_needed': 0,
-                'estimated_health_loss': 0,
-                'num_jumps': 0
+                'num_jumps': 0,
+                'path_stars': [],
+                'total_energy_needed': 0,
+                'total_grass_needed': 0
             }
         
         total_distance = 0
         total_danger = 0
-        rates = self.config['consumption_rates']
+        total_energy_for_eating = 0
+        total_grass_needed = 0
         
         for i in range(len(path) - 1):
             current_star = path[i]
@@ -111,15 +107,20 @@ class RouteCalculator:
                 total_distance += route.distance
                 total_danger += route.danger_level
         
+        # Calculate energy and grass for eating stars
+        for star in path:
+            total_energy_for_eating += star.amount_of_energy
+            total_grass_needed += star.time_to_eat * 5  # 5 kg per time unit
+        
         return {
             'total_distance': round(total_distance, 2),
             'total_danger': total_danger,
-            'total_fuel_needed': round(total_distance * rates['fuel_per_unit_distance'], 2),
-            'total_food_needed': round(total_distance * rates['food_per_unit_distance'], 2),
-            'total_oxygen_needed': round(total_distance * rates['oxygen_per_unit_distance'], 2),
-            'estimated_health_loss': round(total_danger * rates['health_decay_per_danger'], 2),
             'num_jumps': len(path) - 1,
-            'path_stars': [star.name for star in path]
+            'path_stars': [star.label for star in path],
+            'total_energy_needed': total_distance * 0.1,  # Energy for traveling
+            'total_grass_needed': total_grass_needed,
+            'total_energy_gained': total_energy_for_eating * 10,  # Energy from eating stars
+            'net_energy': (total_energy_for_eating * 10) - (total_distance * 0.1)
         }
     
     def find_all_reachable_stars(self, start: Star, max_distance: float) -> List[Tuple[Star, float]]:
@@ -137,3 +138,80 @@ class RouteCalculator:
         # Sort by distance
         reachable.sort(key=lambda x: x[1])
         return reachable
+    
+    def find_optimal_eating_sequence(self, start: Star, available_energy: int, available_grass: int) -> List[Star]:
+        """
+        Find the optimal sequence of stars to eat based on available resources.
+        
+        Args:
+            start: Starting star
+            available_energy: Current energy of the burro
+            available_grass: Current grass of the burro
+            
+        Returns:
+            List of stars in optimal eating sequence
+        """
+        visited = set()
+        eating_sequence = []
+        current_star = start
+        current_energy = available_energy
+        current_grass = available_grass
+        
+        while current_energy > 10 and current_grass > 5:
+            # Find best nearby star to eat
+            best_star = None
+            best_benefit = -1
+            
+            for star in self.space_map.get_all_stars_list():
+                if star.id in visited:
+                    continue
+                
+                path, cost = self.dijkstra(current_star, star)
+                if not path:
+                    continue
+                
+                # Calculate travel cost
+                travel_energy = sum(route.distance for route in self.space_map.routes 
+                                  if self._route_in_path(route, path)) * 0.1
+                
+                # Calculate eating benefit
+                eating_benefit = star.amount_of_energy * 10
+                grass_cost = star.time_to_eat * 5
+                
+                # Net benefit
+                net_benefit = eating_benefit - travel_energy
+                
+                # Check if feasible
+                if (current_energy > travel_energy + 10 and 
+                    current_grass >= grass_cost and 
+                    net_benefit > best_benefit):
+                    best_benefit = net_benefit
+                    best_star = star
+            
+            if best_star is None:
+                break
+            
+            # Move to and eat the best star
+            path, _ = self.dijkstra(current_star, best_star)
+            travel_cost = sum(route.distance for route in self.space_map.routes 
+                            if self._route_in_path(route, path)) * 0.1
+            
+            current_energy -= travel_cost
+            current_energy += best_star.amount_of_energy * 10
+            current_grass -= best_star.time_to_eat * 5
+            
+            eating_sequence.append(best_star)
+            visited.add(best_star.id)
+            current_star = best_star
+        
+        return eating_sequence
+    
+    def _route_in_path(self, route, path: List[Star]) -> bool:
+        """Check if a route is part of a path."""
+        for i in range(len(path) - 1):
+            current_star = path[i]
+            next_star = path[i + 1]
+            if ((route.from_star == current_star and route.to_star == next_star) or
+                (route.to_star == current_star and route.from_star == next_star)):
+                return True
+        return False

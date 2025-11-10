@@ -55,3 +55,4 @@ htmlcov/
 # Generated assets (optional - remove line if you want to commit them)
 # assets/*.png
 # assets/*.jpg
+.debug_stars.py

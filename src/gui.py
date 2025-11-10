@@ -7,9 +7,10 @@ import json
 from typing import Optional
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-from src.models import SpaceMap, SpaceshipDonkey, Comet, Star
+from src.models import SpaceMap, BurroAstronauta, Comet, Star
 from src.route_calculator import RouteCalculator
 from src.visualizer import SpaceVisualizer
+from src.donkey_optimization import DonkeyRouteOptimizer
 
 
 class GalaxiasGUI:
@@ -17,7 +18,7 @@ class GalaxiasGUI:
     
     def __init__(self, root):
         self.root = root
-        self.root.title("Galaxias - Sistema de Rutas Espaciales")
+        self.root.title("Galaxias - Sistema de Rutas del Burro Astronauta")
         self.root.geometry("1400x900")
         self.root.configure(bg='#000033')
         
@@ -28,19 +29,13 @@ class GalaxiasGUI:
         # Initialize space map
         self.space_map = SpaceMap('data/constellations.json')
         
-        # Initialize spaceship donkey
-        ship_config = self.config['spaceship_donkey']
-        self.donkey = SpaceshipDonkey(
-            name=ship_config['name'],
-            health=ship_config['initial_health'],
-            fuel=ship_config['initial_fuel'],
-            food=ship_config['initial_food'],
-            oxygen=ship_config['initial_oxygen']
-        )
+        # Initialize burro astronauta
+        self.burro = self.space_map.create_burro_astronauta()
         
-        # Initialize calculator and visualizer
+        # Initialize calculator, visualizer, and optimizer
         self.calculator = RouteCalculator(self.space_map, self.config)
         self.visualizer = SpaceVisualizer(self.space_map)
+        self.optimizer = DonkeyRouteOptimizer(self.space_map)
         
         # Current path
         self.current_path = None
@@ -63,7 +58,7 @@ class GalaxiasGUI:
         left_panel.pack(side=tk.LEFT, fill=tk.BOTH, padx=(0, 5), pady=0)
         
         # Title
-        title = tk.Label(left_panel, text="🫏 Galaxias 🚀", 
+        title = tk.Label(left_panel, text="🫏 Galaxias 🌟", 
                         font=('Arial', 20, 'bold'), 
                         bg='#000066', fg='white')
         title.pack(pady=10)
@@ -80,9 +75,9 @@ class GalaxiasGUI:
                 bg='#000066', fg='white').pack(anchor=tk.W, padx=5, pady=(5,0))
         
         self.start_star_var = tk.StringVar()
-        star_names = [f"{s.name} ({s.id})" for s in self.space_map.get_all_stars_list()]
+        star_names = [f"{s.label} ({s.id}) - E:{s.amount_of_energy}" for s in self.space_map.get_all_stars_list()]
         self.start_combo = ttk.Combobox(route_frame, textvariable=self.start_star_var,
-                                       values=star_names, state='readonly', width=25)
+                                       values=star_names, state='readonly', width=30)
         self.start_combo.pack(padx=5, pady=5)
         if star_names:
             self.start_combo.current(0)
@@ -93,7 +88,7 @@ class GalaxiasGUI:
         
         self.end_star_var = tk.StringVar()
         self.end_combo = ttk.Combobox(route_frame, textvariable=self.end_star_var,
-                                     values=star_names, state='readonly', width=25)
+                                     values=star_names, state='readonly', width=30)
         self.end_combo.pack(padx=5, pady=5)
         if len(star_names) > 1:
             self.end_combo.current(1)
@@ -102,7 +97,13 @@ class GalaxiasGUI:
         tk.Button(route_frame, text="Calcular Ruta Óptima",
                  command=self.calculate_route,
                  bg='#4444FF', fg='white', font=('Arial', 10, 'bold'),
-                 relief=tk.RAISED, borderwidth=2).pack(pady=10)
+                 relief=tk.RAISED, borderwidth=2).pack(pady=5)
+        
+        # Optimize route button
+        tk.Button(route_frame, text="Optimizar Ruta para Comer Estrellas",
+                 command=self.optimize_eating_route,
+                 bg='#FF44FF', fg='white', font=('Arial', 10, 'bold'),
+                 relief=tk.RAISED, borderwidth=2).pack(pady=5)
         
         # Travel button
         self.travel_button = tk.Button(route_frame, text="Iniciar Viaje",
@@ -113,21 +114,21 @@ class GalaxiasGUI:
                                        state=tk.DISABLED)
         self.travel_button.pack(pady=5)
         
-        # Spaceship Status Section
+        # Burro Status Section
         status_frame = tk.LabelFrame(left_panel, text="Estado del Burro Astronauta",
                                     font=('Arial', 12, 'bold'),
                                     bg='#000066', fg='white',
                                     relief=tk.GROOVE, borderwidth=2)
         status_frame.pack(fill=tk.BOTH, padx=10, pady=5)
         
-        self.status_text = scrolledtext.ScrolledText(status_frame, height=8, width=30,
+        self.status_text = scrolledtext.ScrolledText(status_frame, height=10, width=35,
                                                      bg='#000033', fg='white',
                                                      font=('Courier', 9))
         self.status_text.pack(padx=5, pady=5)
         
-        # Refuel button
-        tk.Button(status_frame, text="Recargar Recursos",
-                 command=self.refuel_donkey,
+        # Restore resources button
+        tk.Button(status_frame, text="Restaurar Recursos",
+                 command=self.restore_burro_resources,
                  bg='#FFAA44', fg='black', font=('Arial', 10, 'bold'),
                  relief=tk.RAISED, borderwidth=2).pack(pady=5)
         
@@ -159,18 +160,6 @@ class GalaxiasGUI:
                  command=self.remove_comet,
                  bg='#44FFFF', fg='black', font=('Arial', 10, 'bold'),
                  relief=tk.RAISED, borderwidth=2).pack(pady=5)
-        
-        # Scientific Parameters Section
-        params_frame = tk.LabelFrame(left_panel, text="Parámetros Científicos",
-                                    font=('Arial', 12, 'bold'),
-                                    bg='#000066', fg='white',
-                                    relief=tk.GROOVE, borderwidth=2)
-        params_frame.pack(fill=tk.BOTH, padx=10, pady=5)
-        
-        tk.Button(params_frame, text="Ver/Modificar Parámetros",
-                 command=self.show_parameters,
-                 bg='#FF44FF', fg='white', font=('Arial', 10, 'bold'),
-                 relief=tk.RAISED, borderwidth=2).pack(pady=10)
         
         # Reports Section
         report_frame = tk.LabelFrame(left_panel, text="Reportes",
@@ -205,9 +194,9 @@ class GalaxiasGUI:
         """Extract star ID from combo box text."""
         if not combo_text:
             return None
-        # Format is "Name (id)"
-        start = combo_text.rfind('(')
-        end = combo_text.rfind(')')
+        # Format is "Label (id) - E:energy"
+        start = combo_text.find('(')
+        end = combo_text.find(')')
         if start != -1 and end != -1:
             return combo_text[start+1:end]
         return None
@@ -248,8 +237,8 @@ class GalaxiasGUI:
         info = f"""
 RUTA CALCULADA
 {'='*60}
-Origen: {start_star.name}
-Destino: {end_star.name}
+Origen: {start_star.label}
+Destino: {end_star.label}
 Costo Total: {cost:.2f}
 
 Estadísticas:
@@ -258,10 +247,10 @@ Estadísticas:
 - Peligro Total: {self.current_path_stats['total_danger']}
 
 Recursos Necesarios:
-- Combustible: {self.current_path_stats['total_fuel_needed']}
-- Comida: {self.current_path_stats['total_food_needed']}
-- Oxígeno: {self.current_path_stats['total_oxygen_needed']}
-- Pérdida de Salud Estimada: {self.current_path_stats['estimated_health_loss']}
+- Energía para Viajar: {self.current_path_stats['total_energy_needed']:.2f}
+- Pasto Necesario: {self.current_path_stats['total_grass_needed']:.2f} kg
+- Energía Ganada: {self.current_path_stats['total_energy_gained']:.2f}
+- Balance Neto: {self.current_path_stats['net_energy']:.2f}
 
 Ruta: {' → '.join(self.current_path_stats['path_stars'])}
         """
@@ -278,65 +267,129 @@ Ruta: {' → '.join(self.current_path_stats['path_stars'])}
         messagebox.showinfo("Ruta Calculada", 
                            f"Ruta encontrada con {self.current_path_stats['num_jumps']} saltos")
     
+    def optimize_eating_route(self):
+        """Optimize route for maximum star eating."""
+        start_id = self.extract_star_id(self.start_star_var.get())
+        
+        if not start_id:
+            messagebox.showerror("Error", "Seleccione estrella de origen")
+            return
+        
+        # Use the optimizer
+        optimal_path, stats = self.optimizer.optimize_route_from_json_data(start_id)
+        
+        if stats.get('error'):
+            messagebox.showerror("Error", stats['error'])
+            return
+        
+        if not optimal_path:
+            messagebox.showwarning("Sin Ruta", "No se pudo encontrar una ruta óptima")
+            return
+        
+        # Set as current path
+        self.current_path = optimal_path
+        self.current_path_stats = self.calculator.calculate_path_stats(optimal_path)
+        
+        # Update info text
+        info = f"""
+RUTA OPTIMIZADA PARA COMER ESTRELLAS
+{'='*60}
+Estrellas Visitadas: {stats['stars_visited']}
+Energía Final: {stats['final_energy']}%
+Pasto Final: {stats['final_grass']} kg
+Estado Final: {stats['final_health_state']}
+Éxito: {'SÍ' if stats['success'] else 'NO'}
+
+Condiciones Iniciales:
+- Energía: {stats['initial_condition']['energia_inicial']}%
+- Pasto: {stats['initial_condition']['pasto']} kg
+- Edad: {stats['initial_condition']['edad']} años
+
+Ruta Optimizada:
+{' → '.join(stats['route'])}
+        """
+        
+        self.info_text.delete(1.0, tk.END)
+        self.info_text.insert(1.0, info)
+        
+        # Enable travel button
+        self.travel_button.config(state=tk.NORMAL)
+        
+        # Update visualization
+        self.update_visualization()
+        
+        messagebox.showinfo("Ruta Optimizada", 
+                           f"Ruta optimizada encontrada: {stats['stars_visited']} estrellas visitadas")
+    
     def start_journey(self):
         """Start the journey along the calculated path."""
-        if not self.current_path or len(self.current_path) < 2:
+        if not self.current_path or len(self.current_path) == 0:
             messagebox.showerror("Error", "Primero calcule una ruta")
             return
         
-        # Check if donkey can make the journey
-        if not self.donkey.can_travel(self.current_path_stats['total_distance'], self.config):
-            messagebox.showerror("Recursos Insuficientes",
-                                "El Burro Astronauta no tiene suficientes recursos para este viaje.\n"
-                                "Recargue los recursos antes de continuar.")
-            return
-        
         # Simulate the journey
-        self.donkey.current_location = self.current_path[0]
-        self.donkey.journey_history = [self.current_path[0]]
+        self.burro.current_location = self.current_path[0]
+        self.burro.journey_history = []
         
-        for i in range(len(self.current_path) - 1):
-            current_star = self.current_path[i]
-            next_star = self.current_path[i + 1]
-            
-            # Find the route
-            route = None
-            for r in self.space_map.routes:
-                if ((r.from_star == current_star and r.to_star == next_star) or
-                    (r.to_star == current_star and r.from_star == next_star)):
-                    route = r
-                    break
-            
-            if route:
-                self.donkey.consume_resources(route.distance, route.danger_level, self.config)
-                self.donkey.current_location = next_star
-                self.donkey.journey_history.append(next_star)
+        for i, star in enumerate(self.current_path):
+            # Check if can eat the star
+            if self.burro.can_eat_star(star):
+                self.burro.consume_resources_eating_star(star)
+                self.burro.journey_history.append(star)
                 
-                if not self.donkey.is_alive():
+                if not self.burro.is_alive():
                     messagebox.showerror("Viaje Fallido",
-                                        f"El Burro Astronauta no sobrevivió el viaje.\n"
-                                        f"Llegó hasta: {next_star.name}")
+                                        f"El Burro Astronauta no sobrevivió.\n"
+                                        f"Llegó hasta: {star.label}")
                     break
+            
+            # Travel to next star if not the last one
+            if i < len(self.current_path) - 1:
+                next_star = self.current_path[i + 1]
+                
+                # Calculate travel distance
+                travel_distance = 0
+                path, _ = self.calculator.dijkstra(star, next_star)
+                if path and len(path) > 1:
+                    for j in range(len(path) - 1):
+                        current = path[j]
+                        next_node = path[j + 1]
+                        for route in self.space_map.routes:
+                            if ((route.from_star == current and route.to_star == next_node) or
+                                (route.to_star == current and route.from_star == next_node)):
+                                travel_distance += route.distance
+                                break
+                
+                # Check if can travel
+                if not self.burro.can_travel(travel_distance):
+                    messagebox.showwarning("Viaje Interrumpido",
+                                          f"El Burro no tiene suficientes recursos para continuar.\n"
+                                          f"Se detuvo en: {star.label}")
+                    break
+                
+                # Travel
+                self.burro.consume_resources_traveling(travel_distance)
+                self.burro.current_location = next_star
         
         # Update displays
         self.update_status_display()
         self.update_visualization()
         
-        if self.donkey.is_alive():
+        if self.burro.is_alive():
             messagebox.showinfo("Viaje Completado",
                                f"¡Viaje exitoso!\n"
-                               f"El Burro Astronauta llegó a {self.donkey.current_location.name}\n"
-                               f"Salud restante: {self.donkey.health:.1f}")
+                               f"El Burro Astronauta visitó {len(self.burro.journey_history)} estrellas\n"
+                               f"Energía restante: {self.burro.current_energy}%")
         
         # Reset path
         self.current_path = None
         self.travel_button.config(state=tk.DISABLED)
     
-    def refuel_donkey(self):
-        """Refuel the spaceship donkey."""
-        self.donkey.refuel()
+    def restore_burro_resources(self):
+        """Restore the burro's resources."""
+        self.burro.restore_resources()
         self.update_status_display()
-        messagebox.showinfo("Recarga Completada", "Recursos recargados exitosamente")
+        messagebox.showinfo("Recursos Restaurados", "Recursos restaurados a valores iniciales")
     
     def add_comet(self):
         """Add a comet to block a route."""
@@ -383,30 +436,6 @@ Ruta: {' → '.join(self.current_path_stats['path_stars'])}
         
         self.comet_name_entry.delete(0, tk.END)
     
-    def show_parameters(self):
-        """Show and allow editing scientific parameters."""
-        param_window = tk.Toplevel(self.root)
-        param_window.title("Parámetros Científicos")
-        param_window.geometry("500x400")
-        param_window.configure(bg='#000066')
-        
-        tk.Label(param_window, text="Parámetros Científicos",
-                font=('Arial', 14, 'bold'),
-                bg='#000066', fg='white').pack(pady=10)
-        
-        # Display parameters
-        params_text = scrolledtext.ScrolledText(param_window, height=15, width=50,
-                                               bg='#000033', fg='white',
-                                               font=('Courier', 10))
-        params_text.pack(padx=10, pady=10)
-        
-        params_str = json.dumps(self.config, indent=2)
-        params_text.insert(1.0, params_str)
-        
-        tk.Button(param_window, text="Cerrar",
-                 command=param_window.destroy,
-                 bg='#4444FF', fg='white', font=('Arial', 10, 'bold')).pack(pady=10)
-    
     def generate_report(self):
         """Generate visual report."""
         if not self.current_path_stats:
@@ -414,7 +443,7 @@ Ruta: {' → '.join(self.current_path_stats['path_stars'])}
             self.current_path_stats = self.calculator.calculate_path_stats([])
         
         self.visualizer.plot_journey_report(
-            self.donkey,
+            self.burro,
             self.current_path_stats,
             save_path='assets/journey_report.png',
             show=True
@@ -422,7 +451,7 @@ Ruta: {' → '.join(self.current_path_stats['path_stars'])}
     
     def update_status_display(self):
         """Update the status text display."""
-        status = self.donkey.get_status()
+        status = self.burro.get_status()
         
         status_str = f"""
 {'='*30}
@@ -432,13 +461,18 @@ Nombre: {status['name']}
 Ubicación: {status['location']}
 
 RECURSOS:
-  Salud:       {status['health']:.1f} / 100
-  Combustible: {status['fuel']:.1f}
-  Comida:      {status['food']:.1f}
-  Oxígeno:     {status['oxygen']:.1f}
+  Energía:     {status['energia']}% / 100%
+  Pasto:       {status['pasto']} kg
+  Edad:        {status['edad']} años
 
-Viajes:        {status['journey_length']}
-Estado:        {'✅ Vivo' if self.donkey.is_alive() else '❌ Muerto'}
+ESTADO:
+  Salud:       {status['estado_salud'].upper()}
+  Viajes:      {status['journey_length']}
+  Estado:      {'✅ VIVO' if status['is_alive'] else '❌ MUERTO'}
+
+DATOS JSON:
+  BurroEnergía:    {status['energia']}%
+  Estado Salud:    {status['estado_salud']}
         """
         
         self.status_text.delete(1.0, tk.END)
@@ -453,7 +487,7 @@ Estado:        {'✅ Vivo' if self.donkey.is_alive() else '❌ Muerto'}
         # Create new figure
         fig = self.visualizer.plot_space_map(
             highlight_path=self.current_path,
-            donkey_location=self.donkey.current_location,
+            donkey_location=self.burro.current_location,
             show=False
         )
         

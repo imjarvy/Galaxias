@@ -11,11 +11,14 @@ import math
 class Star:
     """Represents a star in a constellation."""
     id: str
-    name: str
+    label: str
     x: float
     y: float
-    type: str
-    distance_ly: float
+    radius: float
+    time_to_eat: int
+    amount_of_energy: int
+    hypergiant: bool
+    linked_to: List[Dict] = field(default_factory=list)
     
     def __hash__(self):
         return hash(self.id)
@@ -44,62 +47,109 @@ class Route:
 
 
 @dataclass
-class SpaceshipDonkey:
-    """Represents the astronaut donkey and its spaceship."""
+class BurroAstronauta:
+    """Represents the astronaut donkey based on the JSON structure."""
     name: str
-    health: float
-    fuel: float
-    food: float
-    oxygen: float
+    energia_inicial: int
+    estado_salud: str
+    pasto: int
+    start_age: int
+    death_age: int
     current_location: Optional[Star] = None
     journey_history: List[Star] = field(default_factory=list)
+    current_energy: int = 0
+    current_pasto: int = 0
     
-    def consume_resources(self, distance: float, danger: int, config: Dict):
-        """Consume resources based on travel distance and danger."""
-        rates = config['consumption_rates']
-        self.fuel -= distance * rates['fuel_per_unit_distance']
-        self.food -= distance * rates['food_per_unit_distance']
-        self.oxygen -= distance * rates['oxygen_per_unit_distance']
-        self.health -= danger * rates['health_decay_per_danger']
+    def __post_init__(self):
+        """Initialize current values from initial values."""
+        if self.current_energy == 0:
+            self.current_energy = self.energia_inicial
+        if self.current_pasto == 0:
+            self.current_pasto = self.pasto
+    
+    def consume_resources_eating_star(self, star: Star):
+        """Consume resources when eating a star."""
+        # Consume grass based on star's eating time
+        grass_consumed = star.time_to_eat * 5  # 5 kg per time unit
+        self.current_pasto = max(0, self.current_pasto - grass_consumed)
         
-        # Clamp values to non-negative
-        self.fuel = max(0, self.fuel)
-        self.food = max(0, self.food)
-        self.oxygen = max(0, self.oxygen)
-        self.health = max(0, self.health)
+        # Gain energy based on star's energy amount
+        energy_gained = star.amount_of_energy * 10
+        # Bigger stars (radius) give more energy
+        energy_bonus = int(star.radius * 5)
+        
+        total_energy_gain = energy_gained + energy_bonus
+        self.current_energy = min(100, self.current_energy + total_energy_gain)
+        
+        # Update health state based on energy
+        self._update_health_state()
+    
+    def consume_resources_traveling(self, distance: float):
+        """Consume resources when traveling between stars."""
+        # Energy consumed based on distance and age
+        age_factor = max(1, (self.start_age - 5) / 10)  # Older donkeys consume more
+        energy_consumed = int(distance * 0.1 * age_factor)
+        
+        self.current_energy = max(0, self.current_energy - energy_consumed)
+        self._update_health_state()
+    
+    def _update_health_state(self):
+        """Update health state based on current energy."""
+        if self.current_energy <= 0:
+            self.estado_salud = "muerto"
+        elif self.current_energy <= 25:
+            self.estado_salud = "moribundo"
+        elif self.current_energy <= 50:
+            self.estado_salud = "mala"
+        elif self.current_energy <= 75:
+            self.estado_salud = "buena"
+        else:
+            self.estado_salud = "excelente"
     
     def is_alive(self) -> bool:
         """Check if the donkey astronaut is still alive."""
-        return self.health > 0 and self.oxygen > 0
+        return self.estado_salud != "muerto" and self.current_pasto > 0
     
-    def can_travel(self, distance: float, config: Dict) -> bool:
+    def get_health_state(self) -> str:
+        """Get the current health state of the donkey."""
+        return self.estado_salud
+    
+    def get_burro_energia(self) -> int:
+        """Get the burro energy percentage (1-100)."""
+        return self.current_energy
+    
+    def can_travel(self, distance: float) -> bool:
         """Check if the donkey has enough resources to travel."""
-        rates = config['consumption_rates']
-        required_fuel = distance * rates['fuel_per_unit_distance']
-        required_food = distance * rates['food_per_unit_distance']
-        required_oxygen = distance * rates['oxygen_per_unit_distance']
+        if not self.is_alive():
+            return False
         
-        return (self.fuel >= required_fuel and 
-                self.food >= required_food and 
-                self.oxygen >= required_oxygen and 
-                self.is_alive())
+        age_factor = max(1, (self.start_age - 5) / 10)
+        energy_needed = int(distance * 0.1 * age_factor)
+        
+        return self.current_energy > energy_needed and self.current_pasto > 0
     
-    def refuel(self, fuel: float = 500, food: float = 25, oxygen: float = 50):
-        """Refuel the spaceship at a star station."""
-        self.fuel += fuel
-        self.food += food
-        self.oxygen += oxygen
+    def can_eat_star(self, star: Star) -> bool:
+        """Check if the donkey can eat a star."""
+        grass_needed = star.time_to_eat * 5
+        return self.current_pasto >= grass_needed and self.is_alive()
+    
+    def restore_resources(self):
+        """Restore resources to initial values."""
+        self.current_energy = self.energia_inicial
+        self.current_pasto = self.pasto
+        self.estado_salud = "excelente" if self.current_energy > 75 else "buena"
     
     def get_status(self) -> Dict:
-        """Get current status of the spaceship."""
+        """Get current status of the donkey."""
         return {
             'name': self.name,
-            'health': round(self.health, 2),
-            'fuel': round(self.fuel, 2),
-            'food': round(self.food, 2),
-            'oxygen': round(self.oxygen, 2),
-            'location': self.current_location.name if self.current_location else 'Unknown',
-            'journey_length': len(self.journey_history)
+            'energia': self.current_energy,
+            'estado_salud': self.estado_salud,
+            'pasto': self.current_pasto,
+            'edad': self.start_age,
+            'location': self.current_location.label if self.current_location else 'Unknown',
+            'journey_length': len(self.journey_history),
+            'is_alive': self.is_alive()
         }
 
 
@@ -122,6 +172,7 @@ class SpaceMap:
         self.stars: Dict[str, Star] = {}
         self.routes: List[Route] = []
         self.comets: List[Comet] = []
+        self.burro_data: Dict = {}
         self.load_data(data_path)
     
     def load_data(self, data_path: str):
@@ -129,30 +180,74 @@ class SpaceMap:
         with open(data_path, 'r') as f:
             data = json.load(f)
         
-        # Load stars
-        for constellation in data['constellations']:
-            for star_data in constellation['stars']:
-                star = Star(**star_data)
-                self.stars[star.id] = star
-        
-        # Load routes
-        for route_data in data['routes']:
-            from_star = self.stars[route_data['from']]
-            to_star = self.stars[route_data['to']]
-            route = Route(
-                from_star=from_star,
-                to_star=to_star,
-                distance=route_data['distance'],
-                danger_level=route_data['danger_level']
-            )
-            self.routes.append(route)
+        # Load burro data
+        self.burro_data = {
+            'burroenergiaInicial': data.get('burroenergiaInicial', 100),
+            'estadoSalud': data.get('estadoSalud', 'Excelente'),
+            'pasto': data.get('pasto', 300),
+            'startAge': data.get('startAge', 12),
+            'deathAge': data.get('deathAge', 3567),
+            'number': data.get('number', 123)
+        }
+
+        # Load stars from constellations
+        for constellation in data.get('constellations', []):
+            for start_data in constellation.get('starts', []):
+                star_id = str(start_data['id'])
+                star = Star(
+                    id=star_id,
+                    label=start_data.get('label', star_id),
+                    x=float(start_data.get('coordenates', {}).get('x', 0)),
+                    y=float(start_data.get('coordenates', {}).get('y', 0)),
+                    radius=float(start_data.get('radius', 0.5)),
+                    time_to_eat=int(start_data.get('timeToEat', 1)),
+                    amount_of_energy=int(start_data.get('amountOfEnergy', 1)),
+                    hypergiant=bool(start_data.get('hypergiant', False)),
+                    linked_to=start_data.get('linkedTo', [])
+                )
+                self.stars[star_id] = star
+
+        # Build routes from linkedTo connections
+        seen_edges = set()
+        for star in self.stars.values():
+            for link in star.linked_to:
+                to_star_id = str(link['starId'])
+                distance = float(link['distance'])
+                
+                edge_key = tuple(sorted((star.id, to_star_id)))
+                if edge_key in seen_edges:
+                    continue
+                seen_edges.add(edge_key)
+                
+                if to_star_id in self.stars:
+                    to_star = self.stars[to_star_id]
+                    danger_level = self._calculate_danger_level(distance)
+                    
+                    route = Route(
+                        from_star=star,
+                        to_star=to_star,
+                        distance=distance,
+                        danger_level=danger_level
+                    )
+                    self.routes.append(route)
+    
+    def _calculate_danger_level(self, distance: float) -> int:
+        """Calculate danger level based on distance."""
+        if distance < 50:
+            return 1
+        elif distance < 100:
+            return 2
+        elif distance < 150:
+            return 3
+        else:
+            return 4
     
     def get_star(self, star_id: str) -> Optional[Star]:
         """Get a star by its ID."""
-        return self.stars.get(star_id)
+        return self.stars.get(str(star_id))
     
     def get_routes_from(self, star: Star) -> List[Route]:
-        """Get all routes starting from a given star."""
+        """Get all routes starting from or ending at a given star."""
         return [r for r in self.routes if r.from_star == star or r.to_star == star]
     
     def add_comet(self, comet: Comet):
@@ -183,3 +278,14 @@ class SpaceMap:
     def get_all_stars_list(self) -> List[Star]:
         """Get a list of all stars."""
         return list(self.stars.values())
+    
+    def create_burro_astronauta(self, name: str = "Burro Astronauta") -> 'BurroAstronauta':
+        """Create a BurroAstronauta instance with data from JSON."""
+        return BurroAstronauta(
+            name=name,
+            energia_inicial=self.burro_data['burroenergiaInicial'],
+            estado_salud=self.burro_data['estadoSalud'].lower(),
+            pasto=self.burro_data['pasto'],
+            start_age=self.burro_data['startAge'],
+            death_age=self.burro_data['deathAge']
+        )

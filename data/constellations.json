@@ -1,45 +1,164 @@
 {
   "constellations": [
     {
-      "name": "Orion",
-      "stars": [
-        {"id": "orion_1", "name": "Betelgeuse", "x": 100, "y": 150, "type": "red_giant", "distance_ly": 548},
-        {"id": "orion_2", "name": "Rigel", "x": 300, "y": 400, "type": "blue_supergiant", "distance_ly": 860},
-        {"id": "orion_3", "name": "Bellatrix", "x": 150, "y": 100, "type": "blue_giant", "distance_ly": 250}
+      "name": "Constelación del Burro",
+      "starts": [
+        {
+          "id": 1,
+          "label": "Alpha1",
+          "linkedTo": [
+            {
+              "starId": 2,
+              "distance": 120
+            },
+            {
+              "starId": 4,
+              "distance": 87
+            },
+            {
+              "starId": 5,
+              "distance": 101
+            }
+          ],
+          "radius": 0.4,
+          "timeToEat": 3,
+          "amountOfEnergy": 1,
+          "coordenates": {
+            "x": 25,
+            "y": 34
+          },
+          "hypergiant": false
+        },
+        {
+          "id": 2,
+          "label": "Beta23",
+          "linkedTo": [
+            {
+              "starId": 1,
+              "distance": 120
+            },
+            {
+              "starId": 7,
+              "distance": 45
+            },
+            {
+              "starId": 3,
+              "distance": 17
+            }
+          ],
+          "radius": 0.2,
+          "timeToEat": 2,
+          "amountOfEnergy": 2,
+          "coordenates": {
+            "x": 37,
+            "y": 15
+          },
+          "hypergiant": false
+        },
+        {
+          "id": 3,
+          "label": "Alpha53",
+          "linkedTo": [
+            {
+              "starId": 5,
+              "distance": 86
+            },
+            {
+              "starId": 2,
+              "distance": 17
+            },
+            {
+              "starId": 9,
+              "distance": 15
+            }
+          ],
+          "radius": 1,
+          "timeToEat": 1,
+          "amountOfEnergy": 3,
+          "coordenates": {
+            "x": 75,
+            "y": 43
+          },
+          "hypergiant": true
+        }
       ]
     },
     {
-      "name": "Canis Major",
-      "stars": [
-        {"id": "canis_1", "name": "Sirius", "x": 500, "y": 450, "type": "main_sequence", "distance_ly": 8.6},
-        {"id": "canis_2", "name": "Adhara", "x": 550, "y": 350, "type": "blue_giant", "distance_ly": 430}
-      ]
-    },
-    {
-      "name": "Ursa Major",
-      "stars": [
-        {"id": "ursa_1", "name": "Dubhe", "x": 200, "y": 250, "type": "giant", "distance_ly": 123},
-        {"id": "ursa_2", "name": "Merak", "x": 250, "y": 300, "type": "main_sequence", "distance_ly": 79},
-        {"id": "ursa_3", "name": "Alioth", "x": 350, "y": 200, "type": "main_sequence", "distance_ly": 81}
-      ]
-    },
-    {
-      "name": "Lyra",
-      "stars": [
-        {"id": "lyra_1", "name": "Vega", "x": 450, "y": 150, "type": "main_sequence", "distance_ly": 25}
+      "name": "Constelación de la Araña",
+      "starts": [
+        {
+          "id": 12,
+          "label": "Beta178",
+          "linkedTo": [
+            {
+              "starId": 14,
+              "distance": 120
+            },
+            {
+              "starId": 17,
+              "distance": 87
+            },
+            {
+              "starId": 11,
+              "distance": 101
+            }
+          ],
+          "radius": 0.6,
+          "timeToEat": 3,
+          "amountOfEnergy": 1,
+          "coordenates": {
+            "x": 123,
+            "y": 167
+          },
+          "hypergiant": false
+        },
+        {
+          "id": 13,
+          "label": "Gama23",
+          "linkedTo": [
+            {
+              "starId": 15,
+              "distance": 120
+            },
+            {
+              "starId": 17,
+              "distance": 45
+            }
+          ],
+          "radius": 0.8,
+          "timeToEat": 3,
+          "amountOfEnergy": 5,
+          "coordenates": {
+            "x": 189,
+            "y": 146
+          },
+          "hypergiant": true
+        },
+        {
+          "id": 3,
+          "label": "Alpha53",
+          "linkedTo": [
+            {
+              "starId": 12,
+              "distance": 15
+            }
+          ],
+          "radius": 1,
+          "timeToEat": 1,
+          "amountOfEnergy": 3,
+          "coordenates": {
+            "x": 75,
+            "y": 43
+          },
+          "hypergiant": true
+        }
       ]
     }
   ],
-  "routes": [
-    {"from": "orion_1", "to": "orion_2", "distance": 350, "danger_level": 2},
-    {"from": "orion_1", "to": "orion_3", "distance": 100, "danger_level": 1},
-    {"from": "orion_2", "to": "orion_3", "distance": 300, "danger_level": 3},
-    {"from": "orion_2", "to": "canis_1", "distance": 250, "danger_level": 2},
-    {"from": "orion_3", "to": "ursa_1", "distance": 180, "danger_level": 1},
-    {"from": "ursa_1", "to": "ursa_2", "distance": 100, "danger_level": 1},
-    {"from": "ursa_2", "to": "ursa_3", "distance": 150, "danger_level": 2},
-    {"from": "ursa_3", "to": "lyra_1", "distance": 200, "danger_level": 2},
-    {"from": "canis_1", "to": "canis_2", "distance": 150, "danger_level": 1},
-    {"from": "canis_2", "to": "ursa_3", "distance": 300, "danger_level": 3}
-  ]
+  "burroenergiaInicial": 100,
+  "estadoSalud": "Excelente",
+  "pasto": 300,
+  "number": 123,
+  "startAge": 12,
+  "deathAge": 3567
 }
