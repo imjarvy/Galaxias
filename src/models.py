@@ -289,3 +289,35 @@ class SpaceMap:
             start_age=self.burro_data['startAge'],
             death_age=self.burro_data['deathAge']
         )
+    
+    def verificar_bidireccionalidad_enlaces(self) -> List[Tuple[int, int]]:
+        """
+        Verifica la bidireccionalidad de enlaces en el JSON.
+        
+        Returns:
+            List[Tuple[int, int]]: Lista vacía si todo OK, 
+                                  lista de pares (from_id, to_id) faltantes si hay incumplimiento
+        """
+        # Recopilar todos los enlaces existentes desde el JSON original
+        enlaces_existentes = set()
+        
+        with open('data/constellations.json', 'r') as f:
+            data = json.load(f)
+        
+        for constellation in data.get('constellations', []):
+            for star_data in constellation.get('starts', []):
+                star_id = star_data['id']
+                
+                for link in star_data.get('linkedTo', []):
+                    to_star_id = link['starId']
+                    enlaces_existentes.add((star_id, to_star_id))
+        
+        # Verificar qué enlaces inversos faltan
+        pares_faltantes = []
+        
+        for (from_id, to_id) in enlaces_existentes:
+            enlace_inverso = (to_id, from_id)
+            if enlace_inverso not in enlaces_existentes:
+                pares_faltantes.append(enlace_inverso)
+        
+        return pares_faltantes
