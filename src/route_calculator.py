@@ -376,3 +376,65 @@ class RouteCalculator:
         }
 
         return best['visited'], stats
+    
+    def find_min_cost_route_from_json(self, 
+                                     start: Star,
+                                     config_path: str = "data/spaceship_config.json",
+                                     research_params=None) -> Tuple[List[Star], Dict]:
+        """
+        Find the route with minimum cost while visiting maximum stars using ONLY JSON initial values.
+        Implements specific rules:
+        - Can eat only if energy < 50%
+        - Health bonus: +5% (excellent), +3% (regular), +2% (bad)
+        - Time division: configurable % eating/research
+        - Energy consumption for research: configurable rate
+        
+        Args:
+            start: Starting star
+            config_path: Path to spaceship config
+            research_params: Parámetros configurables de investigación (opcional)
+            
+        Returns:
+            Tuple of (optimal_path, detailed_statistics)
+        """
+        from src.min_cost_route import MinCostRouteCalculator
+        
+        # Usar el nuevo calculador de menor gasto con parámetros configurables
+        calculator = MinCostRouteCalculator(self.space_map, config_path, research_params)
+        result = calculator.calculate_min_cost_route(start.id)
+        
+        if not result.success:
+            return [], {
+                'error': result.error_message or 'No se pudo calcular ruta de menor gasto',
+                'stars_visited': 0,
+                'total_grass_consumed': 0.0,
+                'final_energy': 0.0,
+                'remaining_life': 0.0
+            }
+        
+        # Convertir resultado a formato compatible
+        path_stars = []
+        for route_item in result.route_sequence:
+            star = self.space_map.get_star(route_item['id'])
+            if star:
+                path_stars.append(star)
+        
+        stats = {
+            'stars_visited': len(path_stars),
+            'total_distance': result.total_distance,
+            'life_time_consumed': result.life_consumed,
+            'path_stars': [star.label for star in path_stars],
+            'total_grass_consumed': result.total_grass_consumed,
+            'final_energy': result.final_energy,
+            'remaining_life': result.remaining_life,
+            'star_actions_detail': result.star_actions,
+            'calculation_type': 'minimum_cost',
+            'research_parameters_used': {
+                'energy_consumption_rate': research_params.energy_consumption_rate if research_params else 2.0,
+                'time_percentage': research_params.time_percentage if research_params else 0.5,
+                'custom_star_configurations': len(research_params.custom_star_settings) if research_params else 0
+            } if research_params else None,
+            'notes': 'Ruta optimizada para MENOR GASTO con reglas específicas de comer/investigar y parámetros configurables'
+        }
+        
+        return path_stars, stats

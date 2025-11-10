@@ -11,6 +11,7 @@ from src.models import SpaceMap, BurroAstronauta, Comet, Star
 from src.route_calculator import RouteCalculator
 from src.visualizer import SpaceVisualizer
 from src.donkey_optimization import DonkeyRouteOptimizer
+from src.research_parameter_editor import ResearchParameterEditor, ResearchParameters
 
 
 class GalaxiasGUI:
@@ -36,6 +37,9 @@ class GalaxiasGUI:
         self.calculator = RouteCalculator(self.space_map, self.config)
         self.visualizer = SpaceVisualizer(self.space_map)
         self.optimizer = DonkeyRouteOptimizer(self.space_map)
+        
+        # Research parameters for min cost calculations
+        self.research_parameters = ResearchParameters()
         
         # Current path
         self.current_path = None
@@ -110,6 +114,18 @@ class GalaxiasGUI:
                  command=self.calculate_max_visit_route,
                  bg='#44FFAA', fg='black', font=('Arial', 10, 'bold'),
                  relief=tk.RAISED, borderwidth=2).pack(pady=5)
+
+        # Min cost route button (NEW)
+        tk.Button(route_frame, text="Ruta Menor Gasto Posible",
+                 command=self.calculate_min_cost_route,
+                 bg='#AA44FF', fg='white', font=('Arial', 10, 'bold'),
+                 relief=tk.RAISED, borderwidth=2).pack(pady=5)
+        
+        # Edit research parameters button (NEW)
+        tk.Button(route_frame, text="⚙️ Configurar Parámetros",
+                 command=self.edit_research_parameters,
+                 bg='#CC6600', fg='white', font=('Arial', 9, 'bold'),
+                 relief=tk.RAISED, borderwidth=2).pack(pady=2)
         
         # Travel button
         self.travel_button = tk.Button(route_frame, text="Iniciar Viaje",
@@ -400,6 +416,109 @@ consideran cambios actuales del burro astronauta.
                            f"• Energía inicial: {json_values.get('energia_inicial')}%\n"
                            f"• Edad inicial: {json_values.get('edad_inicial')} años")
     
+    def calculate_min_cost_route(self):
+        """Calcula la ruta de menor gasto posible con reglas específicas."""
+        try:
+            start_text = self.start_star_var.get()
+            start_id = self.extract_star_id(start_text)
+            
+            if not start_id:
+                messagebox.showwarning("Advertencia", "Por favor selecciona una estrella de origen")
+                return
+            
+            start_star = self.space_map.get_star(start_id)
+            if not start_star:
+                messagebox.showerror("Error", f"Estrella {start_id} no encontrada")
+                return
+            
+            # Mostrar información sobre las reglas con parámetros actuales
+            rules_info = f"""
+REGLAS DE MENOR GASTO POSIBLE:
+
+• Solo puede comer si energía < 50%
+• Bonus por estado de salud:
+  - Excelente: +5% por kg
+  - Regular: +3% por kg  
+  - Malo: +2% por kg
+• División de tiempo:
+  - {(1-self.research_parameters.time_percentage)*100:.0f}% comer
+  - {self.research_parameters.time_percentage*100:.0f}% investigar
+• Consumo energía investigación: {self.research_parameters.energy_consumption_rate:.1f}% por tiempo
+• Configuraciones específicas: {len(self.research_parameters.custom_star_settings)} estrellas
+• Una estrella solo se visita una vez
+• Objetivo: MENOR GASTO total
+
+¿Continuar con el cálculo?"""
+            
+            if not messagebox.askyesno("Confirmar Reglas", rules_info):
+                return
+            
+            self.status_text.insert(tk.END, "\n" + "="*40)
+            self.status_text.insert(tk.END, "\nCalculando ruta de MENOR GASTO...")
+            self.status_text.insert(tk.END, f"\nDesde: {start_star.label} ({start_id})")
+            self.status_text.insert(tk.END, "\nReglas específicas activadas...")
+            self.status_text.see(tk.END)
+            self.root.update()
+            
+            # Calcular ruta de menor gasto usando parámetros configurables
+            path, stats = self.calculator.find_min_cost_route_from_json(start_star, research_params=self.research_parameters)
+            
+            if not path or 'error' in stats:
+                error_msg = stats.get('error', 'No se pudo calcular la ruta')
+                self.status_text.insert(tk.END, f"\n❌ Error: {error_msg}")
+                self.status_text.see(tk.END)
+                return
+            
+            # Actualizar visualización
+            self.current_path = path
+            self.current_path_stats = stats
+            self.update_visualization()
+            self.travel_button.config(state=tk.NORMAL)
+            
+            # Mostrar resultados detallados
+            self.status_text.insert(tk.END, "\n" + "="*40)
+            self.status_text.insert(tk.END, "\n🎯 RUTA DE MENOR GASTO CALCULADA")
+            self.status_text.insert(tk.END, "\n" + "="*40)
+            self.status_text.insert(tk.END, f"\n📍 Estrellas visitadas: {stats['stars_visited']}")
+            self.status_text.insert(tk.END, f"\n📏 Distancia total: {stats['total_distance']} años luz")
+            self.status_text.insert(tk.END, f"\n⏱️ Tiempo vida usado: {stats['life_time_consumed']:.2f} años")
+            self.status_text.insert(tk.END, f"\n🌱 Pasto consumido: {stats['total_grass_consumed']:.2f} kg")
+            self.status_text.insert(tk.END, f"\n⚡ Energía final: {stats['final_energy']:.2f}%")
+            self.status_text.insert(tk.END, f"\n💫 Vida restante: {stats['remaining_life']:.2f} años")
+            
+            # Mostrar secuencia de estrellas
+            self.status_text.insert(tk.END, "\n\n📋 SECUENCIA DE ESTRELLAS:")
+            for i, star in enumerate(path, 1):
+                self.status_text.insert(tk.END, f"\n  {i}. {star.label} (ID: {star.id})")
+            
+            # Mostrar detalle de acciones si está disponible
+            if 'star_actions_detail' in stats:
+                self.status_text.insert(tk.END, "\n\n🔍 DETALLE DE ACCIONES POR ESTRELLA:")
+                for action in stats['star_actions_detail']:
+                    self.status_text.insert(tk.END, f"\n\n⭐ {action.star_label} (ID: {action.star_id})")
+                    self.status_text.insert(tk.END, f"\n   Energía al llegar: {action.arrived_energy:.1f}%")
+                    self.status_text.insert(tk.END, f"\n   Puede comer: {'Sí' if action.can_eat else 'No'}")
+                    if action.can_eat and action.ate_kg > 0:
+                        self.status_text.insert(tk.END, f"\n   Comió: {action.ate_kg:.2f} kg")
+                        self.status_text.insert(tk.END, f"\n   Energía ganada: +{action.energy_gained_eating:.1f}%")
+                        self.status_text.insert(tk.END, f"\n   Tiempo comiendo: {action.time_eating:.1f}")
+                    self.status_text.insert(tk.END, f"\n   Tiempo investigando: {action.time_researching:.1f}")
+                    self.status_text.insert(tk.END, f"\n   Energía por investigar: -{action.energy_consumed_research:.1f}%")
+                    self.status_text.insert(tk.END, f"\n   Energía final: {action.final_energy:.1f}%")
+            
+            self.status_text.insert(tk.END, "\n" + "="*40)
+            self.status_text.insert(tk.END, "\n✅ Cálculo completado!")
+            self.status_text.see(tk.END)
+            
+            messagebox.showinfo("Éxito", 
+                f"Ruta de menor gasto calculada!\n"
+                f"Estrellas visitadas: {stats['stars_visited']}\n"
+                f"Pasto consumido: {stats['total_grass_consumed']:.2f} kg\n"
+                f"Energía final: {stats['final_energy']:.2f}%")
+            
+        except Exception as e:
+            messagebox.showerror("Error", f"Error calculando ruta de menor gasto: {str(e)}")
+
     def start_journey(self):
         """Start the journey along the calculated path."""
         if not self.current_path or len(self.current_path) == 0:
@@ -576,6 +695,62 @@ DATOS JSON:
         canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
         
         plt.close(fig)
+    
+    def edit_research_parameters(self):
+        """Abre el editor de parámetros de investigación."""
+        try:
+            self.status_text.insert(tk.END, "\n🔧 Abriendo editor de parámetros de investigación...")
+            self.status_text.see(tk.END)
+            self.root.update()
+            
+            # Crear editor con parámetros actuales
+            editor = ResearchParameterEditor(self.root, self.space_map, self.research_parameters)
+            
+            # Esperar a que se cierre la ventana
+            self.root.wait_window(editor.window)
+            
+            # Obtener parámetros configurados
+            new_params = editor.get_parameters()
+            
+            if new_params is not None:
+                # Actualizar parámetros
+                self.research_parameters = new_params
+                
+                self.status_text.insert(tk.END, "\n✅ Parámetros de investigación actualizados:")
+                self.status_text.insert(tk.END, f"\n   • Consumo energía: {new_params.energy_consumption_rate:.1f}% por tiempo")
+                self.status_text.insert(tk.END, f"\n   • Tiempo investigación: {new_params.time_percentage*100:.1f}%")
+                self.status_text.insert(tk.END, f"\n   • Bonus tiempo vida: {new_params.life_time_bonus:+.1f} años")
+                self.status_text.insert(tk.END, f"\n   • Bonus energía: {new_params.energy_bonus_per_star:+.1f}% por estrella")
+                self.status_text.insert(tk.END, f"\n   • Configuraciones específicas: {len(new_params.custom_star_settings)} estrellas")
+                
+                # Información adicional
+                if new_params.custom_star_settings:
+                    self.status_text.insert(tk.END, "\n\n📝 Estrellas con configuración específica:")
+                    for star_id, config in new_params.custom_star_settings.items():
+                        star = self.space_map.get_star(star_id)
+                        star_name = star.label if star else f"ID:{star_id}"
+                        self.status_text.insert(tk.END, f"\n   🌟 {star_name}: energía={config.get('energy_rate', 'default'):.1f}%, tiempo={config.get('time_bonus', 'default'):+.1f}a")
+                
+                self.status_text.insert(tk.END, "\n\n💡 Los nuevos parámetros se aplicarán en el próximo cálculo de ruta.")
+                
+                # Mensaje informativo
+                messagebox.showinfo("Parámetros Actualizados", 
+                    f"Se han configurado exitosamente los parámetros de investigación.\n\n"
+                    f"Resumen:\n"
+                    f"• Consumo energía: {new_params.energy_consumption_rate:.1f}% por tiempo\n"
+                    f"• Tiempo investigación: {new_params.time_percentage*100:.1f}%\n"
+                    f"• Configuraciones específicas: {len(new_params.custom_star_settings)}\n\n"
+                    f"Los cambios se aplicarán en la próxima ruta calculada.")
+                
+            else:
+                self.status_text.insert(tk.END, "\n❌ Configuración de parámetros cancelada")
+            
+            self.status_text.see(tk.END)
+            
+        except Exception as e:
+            messagebox.showerror("Error", f"Error al abrir editor de parámetros: {str(e)}")
+            self.status_text.insert(tk.END, f"\n❌ Error: {str(e)}")
+            self.status_text.see(tk.END)
 
 
 def main():
