@@ -19,7 +19,7 @@ from dataclasses import dataclass
 # Agregar path para imports
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from src.models import SpaceMap, Star, Route
-from src.research_parameter_editor import ResearchParameters
+from src.parameter_editor_simple import ResearchParameters
 
 
 @dataclass

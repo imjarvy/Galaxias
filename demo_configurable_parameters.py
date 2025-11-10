@@ -8,7 +8,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from src.models import SpaceMap
 from src.min_cost_route import MinCostRouteCalculator
-from src.research_parameter_editor import ResearchParameters
+from src.parameter_editor_simple import ResearchParameters
 import json
 
 

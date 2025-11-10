@@ -11,7 +11,8 @@ from src.models import SpaceMap, BurroAstronauta, Comet, Star
 from src.route_calculator import RouteCalculator
 from src.visualizer import SpaceVisualizer
 from src.donkey_optimization import DonkeyRouteOptimizer
-from src.research_parameter_editor import ResearchParameterEditor, ResearchParameters
+from src.parameter_editor_simple import ResearchParameterEditor, ResearchParameters
+from src.research_impact_validator import ResearchImpactValidatorGUI
 
 
 class GalaxiasGUI:
@@ -41,12 +42,18 @@ class GalaxiasGUI:
         # Research parameters for min cost calculations
         self.research_parameters = ResearchParameters()
         
+        # Research impact validator
+        self.research_impact_validator = None
+        
         # Current path
         self.current_path = None
         self.current_path_stats = None
         
         # Setup UI
         self.setup_ui()
+        
+        # Update initial button status
+        self.update_config_button_status()
         
         # Initial visualization
         self.update_visualization()
@@ -122,9 +129,16 @@ class GalaxiasGUI:
                  relief=tk.RAISED, borderwidth=2).pack(pady=5)
         
         # Edit research parameters button (NEW)
-        tk.Button(route_frame, text="⚙️ Configurar Parámetros",
+        self.config_params_button = tk.Button(route_frame, text="⚙️ Configurar Parámetros",
                  command=self.edit_research_parameters,
                  bg='#CC6600', fg='white', font=('Arial', 9, 'bold'),
+                 relief=tk.RAISED, borderwidth=2)
+        self.config_params_button.pack(pady=2)
+        
+        # Research Impact Validation button (NEW)
+        tk.Button(route_frame, text="🔬 Validar Impactos de Investigación",
+                 command=self.validate_research_impacts,
+                 bg='#FF6600', fg='white', font=('Arial', 9, 'bold'),
                  relief=tk.RAISED, borderwidth=2).pack(pady=2)
         
         # Travel button
@@ -716,6 +730,9 @@ DATOS JSON:
                 # Actualizar parámetros
                 self.research_parameters = new_params
                 
+                # Actualizar indicador visual del botón
+                self.update_config_button_status()
+                
                 self.status_text.insert(tk.END, "\n✅ Parámetros de investigación actualizados:")
                 self.status_text.insert(tk.END, f"\n   • Consumo energía: {new_params.energy_consumption_rate:.1f}% por tiempo")
                 self.status_text.insert(tk.END, f"\n   • Tiempo investigación: {new_params.time_percentage*100:.1f}%")
@@ -731,16 +748,21 @@ DATOS JSON:
                         star_name = star.label if star else f"ID:{star_id}"
                         self.status_text.insert(tk.END, f"\n   🌟 {star_name}: energía={config.get('energy_rate', 'default'):.1f}%, tiempo={config.get('time_bonus', 'default'):+.1f}a")
                 
-                self.status_text.insert(tk.END, "\n\n💡 Los nuevos parámetros se aplicarán en el próximo cálculo de ruta.")
                 
-                # Mensaje informativo
-                messagebox.showinfo("Parámetros Actualizados", 
+                # Preguntar si desea recalcular rutas automáticamente
+                recalculate = messagebox.askyesno("Parámetros Actualizados", 
                     f"Se han configurado exitosamente los parámetros de investigación.\n\n"
                     f"Resumen:\n"
                     f"• Consumo energía: {new_params.energy_consumption_rate:.1f}% por tiempo\n"
                     f"• Tiempo investigación: {new_params.time_percentage*100:.1f}%\n"
                     f"• Configuraciones específicas: {len(new_params.custom_star_settings)}\n\n"
-                    f"Los cambios se aplicarán en la próxima ruta calculada.")
+                    f"¿Desea recalcular automáticamente las rutas con los nuevos parámetros?")
+                
+                if recalculate:
+                    self.status_text.insert(tk.END, "\n\n🔄 Recalculando rutas con nuevos parámetros...")
+                    self.recalculate_routes_with_new_parameters()
+                else:
+                    self.status_text.insert(tk.END, "\n\n💡 Los nuevos parámetros se aplicarán en el próximo cálculo manual de ruta.")
                 
             else:
                 self.status_text.insert(tk.END, "\n❌ Configuración de parámetros cancelada")
@@ -749,6 +771,179 @@ DATOS JSON:
             
         except Exception as e:
             messagebox.showerror("Error", f"Error al abrir editor de parámetros: {str(e)}")
+            self.status_text.insert(tk.END, f"\n❌ Error: {str(e)}")
+            self.status_text.see(tk.END)
+    
+    def recalculate_routes_with_new_parameters(self):
+        """Recalcula las rutas disponibles con los nuevos parámetros de investigación."""
+        try:
+            # Verificar que tenemos estrellas seleccionadas
+            if not self.start_star_var.get():
+                self.status_text.insert(tk.END, "\n⚠️  Seleccione una estrella de origen para recalcular")
+                return
+            
+            start_id = self.extract_star_id(self.start_star_var.get())
+            start_star = self.space_map.get_star(start_id)
+            
+            if not start_star:
+                self.status_text.insert(tk.END, "\n❌ Estrella de origen no encontrada")
+                return
+            
+            self.status_text.insert(tk.END, f"\n\n🚀 RECALCULANDO RUTAS CON NUEVOS PARÁMETROS")
+            self.status_text.insert(tk.END, f"\n{'=' * 50}")
+            
+            # 1. Recalcular ruta de menor gasto
+            self.status_text.insert(tk.END, "\n\n1️⃣ Recalculando ruta de menor gasto...")
+            try:
+                path, stats = self.calculator.find_min_cost_route_from_json(
+                    start_star, 
+                    research_params=self.research_parameters
+                )
+                
+                if path and len(path) > 1:
+                    route_summary = " → ".join([s.label for s in path])
+                    self.status_text.insert(tk.END, f"\n   ✅ Ruta menor gasto: {route_summary}")
+                    self.status_text.insert(tk.END, f"\n   📊 Estrellas: {stats.get('num_stars', 0)}, Tiempo: {stats.get('life_time_consumed', 0):.1f}a")
+                    
+                    # Actualizar visualización
+                    self.current_path = path
+                    self.current_path_stats = stats
+                else:
+                    self.status_text.insert(tk.END, "\n   ❌ No se encontró ruta de menor gasto válida")
+                    
+            except Exception as e:
+                self.status_text.insert(tk.END, f"\n   ❌ Error en ruta menor gasto: {str(e)}")
+            
+            # 2. Recalcular ruta de máximas visitas
+            self.status_text.insert(tk.END, "\n\n2️⃣ Recalculando ruta de máximas visitas...")
+            try:
+                path, stats = self.calculator.find_max_visit_route_from_json(start_star)
+                
+                if path and len(path) > 0:
+                    route_summary = " → ".join([s.label for s in path])
+                    self.status_text.insert(tk.END, f"\n   ✅ Ruta máximas visitas: {route_summary}")
+                    self.status_text.insert(tk.END, f"\n   📊 Estrellas: {len(path)}, Tiempo: {stats.get('life_time_consumed', 0):.1f}a")
+                else:
+                    self.status_text.insert(tk.END, "\n   ❌ No se encontró ruta de máximas visitas válida")
+                    
+            except Exception as e:
+                self.status_text.insert(tk.END, f"\n   ❌ Error en ruta máximas visitas: {str(e)}")
+            
+            # 3. Recalcular optimización para comer estrellas
+            self.status_text.insert(tk.END, "\n\n3️⃣ Recalculando optimización para comer estrellas...")
+            try:
+                optimal_path, optimization_stats = self.optimizer.simulate_journey(start_star, self.burro)
+                
+                if optimal_path and len(optimal_path) > 0:
+                    eating_summary = " → ".join([s.label for s in optimal_path])
+                    self.status_text.insert(tk.END, f"\n   ✅ Ruta optimizada: {eating_summary}")
+                    self.status_text.insert(tk.END, f"\n   📊 Estrellas comidas: {optimization_stats.get('stars_visited', 0)}")
+                    self.status_text.insert(tk.END, f"\n   📊 Energía final: {optimization_stats.get('final_energy', 0):.1f}%")
+                else:
+                    self.status_text.insert(tk.END, "\n   ❌ No se encontró optimización para comer estrellas válida")
+                    
+            except Exception as e:
+                self.status_text.insert(tk.END, f"\n   ❌ Error en optimización: {str(e)}")
+            
+            # Actualizar visualización con la mejor ruta encontrada
+            if self.current_path:
+                self.update_visualization()
+                self.status_text.insert(tk.END, "\n\n🎨 Visualización actualizada con la nueva ruta")
+            
+            self.status_text.insert(tk.END, "\n\n✅ RECÁLCULO COMPLETADO")
+            self.status_text.insert(tk.END, "\n💡 Los resultados reflejan los nuevos parámetros de investigación")
+            self.status_text.see(tk.END)
+            
+        except Exception as e:
+            self.status_text.insert(tk.END, f"\n❌ Error durante recálculo: {str(e)}")
+            self.status_text.see(tk.END)
+    
+    def update_config_button_status(self):
+        """Actualiza el estado visual del botón de configurar parámetros."""
+        try:
+            # Verificar si hay configuraciones personalizadas
+            has_custom_config = (
+                self.research_parameters.energy_consumption_rate != 2.0 or
+                self.research_parameters.time_percentage != 0.5 or
+                self.research_parameters.life_time_bonus != 0.0 or
+                self.research_parameters.energy_bonus_per_star != 0.0 or
+                len(self.research_parameters.custom_star_settings) > 0
+            )
+            
+            if has_custom_config:
+                # Configuración personalizada activa
+                self.config_params_button.config(
+                    text="✅ Parámetros Configurados",
+                    bg='#00AA00',
+                    fg='white'
+                )
+            else:
+                # Configuración por defecto
+                self.config_params_button.config(
+                    text="⚙️ Configurar Parámetros",
+                    bg='#CC6600',
+                    fg='white'
+                )
+        except Exception as e:
+            print(f"Error actualizando botón: {e}")
+    
+    def validate_research_impacts(self):
+        """Abre el validador de impactos de investigación por estrella."""
+        try:
+            self.status_text.insert(tk.END, "\n🔬 Abriendo validador de impactos de investigación...")
+            self.status_text.see(tk.END)
+            self.root.update()
+            
+            # Crear validador
+            validator_gui = ResearchImpactValidatorGUI(self.root, self.space_map)
+            
+            # Esperar a que se cierre la ventana
+            self.root.wait_window(validator_gui.window)
+            
+            # Obtener resultado
+            validator = validator_gui.get_result()
+            
+            if validator is not None:
+                # Actualizar validador
+                self.research_impact_validator = validator
+                
+                self.status_text.insert(tk.END, "\n✅ Validador de impactos configurado exitosamente")
+                
+                # Obtener configuración actual para mostrar resumen
+                all_star_ids = [star.id for star in self.space_map.get_all_stars_list()]
+                route_impact = validator.calculate_route_impact(all_star_ids)
+                
+                self.status_text.insert(tk.END, f"\n📊 RESUMEN DE IMPACTOS CONFIGURADOS:")
+                self.status_text.insert(tk.END, f"\n   • Estrellas analizadas: {route_impact['stars_analyzed']}")
+                self.status_text.insert(tk.END, f"\n   • Impacto total en salud: {route_impact['total_health_impact']:+.1f} puntos")
+                self.status_text.insert(tk.END, f"\n   • Impacto total en vida: {route_impact['total_life_impact']:+.1f} años")
+                self.status_text.insert(tk.END, f"\n   • Riesgo general: {route_impact['overall_risk']}")
+                
+                # Mostrar estrellas de riesgo si las hay
+                if route_impact['risk_stars']:
+                    self.status_text.insert(tk.END, f"\n   🚨 Estrellas de riesgo: {len(route_impact['risk_stars'])}")
+                    for risk_star in route_impact['risk_stars'][:3]:  # Mostrar solo las primeras 3
+                        self.status_text.insert(tk.END, f"\n     - {risk_star['star']} ({risk_star['risk']})")
+                
+                self.status_text.insert(tk.END, "\n💡 Los impactos se aplicarán en futuros cálculos de rutas.")
+                
+                # Mensaje informativo
+                messagebox.showinfo("Impactos Configurados", 
+                    f"Se han configurado exitosamente los impactos de investigación.\n\n"
+                    f"Resumen:\n"
+                    f"• Estrellas analizadas: {route_impact['stars_analyzed']}\n"
+                    f"• Impacto en salud: {route_impact['total_health_impact']:+.1f} puntos\n"
+                    f"• Impacto en vida: {route_impact['total_life_impact']:+.1f} años\n"
+                    f"• Riesgo general: {route_impact['overall_risk']}\n\n"
+                    f"Use 'Calcular Rutas' para ver el impacto en las rutas.")
+                
+            else:
+                self.status_text.insert(tk.END, "\n❌ Validación de impactos cancelada")
+            
+            self.status_text.see(tk.END)
+            
+        except Exception as e:
+            messagebox.showerror("Error", f"Error al abrir validador de impactos: {str(e)}")
             self.status_text.insert(tk.END, f"\n❌ Error: {str(e)}")
             self.status_text.see(tk.END)
 
