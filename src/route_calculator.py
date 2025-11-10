@@ -2,6 +2,7 @@
 Route calculation algorithms for finding optimal paths through space.
 """
 import heapq
+import json
 from typing import Dict, List, Optional, Tuple
 from src.models import Star, Route, SpaceMap
 
@@ -215,3 +216,163 @@ class RouteCalculator:
                 (route.to_star == current_star and route.from_star == next_star)):
                 return True
         return False
+    
+    def find_max_visit_route_from_json(self, 
+                                      start: Star,
+                                      config_path: str = "data/spaceship_config.json") -> Tuple[List[Star], Dict]:
+        """
+        Find the route that visits the maximum number of stars using ONLY JSON initial values.
+        
+        Args:
+            start: Starting star
+            config_path: Path to spaceship config
+            
+        Returns:
+            Tuple of (optimal_path, statistics)
+        """
+        # USAR SOLO VALORES DEL JSON - no overrides
+        edad = self.space_map.burro_data['startAge']
+        energia_pct = self.space_map.burro_data['burroenergiaInicial'] 
+        pasto_kg = self.space_map.burro_data['pasto']
+        death_age = self.space_map.burro_data['deathAge']
+        estado_salud = self.space_map.burro_data['estadoSalud'].lower()
+
+        # Load spaceship config
+        try:
+            with open(config_path, 'r') as f:
+                config = json.load(f)
+            warp_factor = config.get('scientific_parameters', {}).get('warp_factor', 1.0)
+        except Exception:
+            warp_factor = 1.0
+
+        # Quick rejects
+        if estado_salud == 'muerto' or energia_pct <= 0 or pasto_kg <= 0:
+            return [], {
+                'stars_visited': 0,
+                'total_distance': 0.0,
+                'life_time_consumed': 0.0,
+                'error': 'Burro no puede iniciar viaje con los parámetros del JSON.',
+                'json_values_used': {
+                    'energia_inicial': energia_pct,
+                    'edad_inicial': edad,
+                    'death_age': death_age,
+                    'pasto_inicial': pasto_kg,
+                    'estado_salud': estado_salud
+                }
+            }
+
+        remaining_life = max(0, death_age - edad)
+        age_factor = max(1.0, (edad - 5) / 10.0)
+        remaining_energy = int(energia_pct)
+
+        def distance_to_time(distance: float) -> float:
+            return distance / warp_factor
+
+        def edge_cost_and_time(distance: float) -> Tuple[int, float]:
+            energy_cost = int(distance * 0.1 * age_factor)
+            travel_time = distance_to_time(distance)
+            return energy_cost, travel_time
+
+        # Build adjacency from routes
+        adjacency: Dict[str, List[Tuple[Route, str]]] = {}
+        for route in self.space_map.routes:
+            if route.blocked:
+                continue
+            a = route.from_star.id
+            b = route.to_star.id
+            adjacency.setdefault(a, []).append((route, b))
+            adjacency.setdefault(b, []).append((route, a))
+
+        # Search with heuristics
+        best = {
+            'visited': [start],
+            'distance': 0.0
+        }
+
+        def heuristic_score(visited_count: int, remaining_energy: int, remaining_life: float) -> float:
+            base_score = visited_count * 1000
+            energy_bonus = remaining_energy * 2
+            life_bonus = min(remaining_life, 100) * 5
+            return base_score + energy_bonus + life_bonus
+
+        def optimized_search(current_id: str,
+                           path: List[Star],
+                           total_distance: float,
+                           energy_left: int,
+                           life_left: float,
+                           depth: int = 0):
+            nonlocal best
+            
+            if depth > 12:
+                return
+
+            if (len(path) > len(best['visited']) or 
+                (len(path) == len(best['visited']) and total_distance < best['distance'])):
+                best['visited'] = path.copy()
+                best['distance'] = total_distance
+
+            max_additional = min(8, len(self.space_map.get_all_stars_list()) - len(path))
+            if len(path) + max_additional <= len(best['visited']):
+                return
+
+            neighbors = []
+            for (route, neighbor_id) in adjacency.get(current_id, []):
+                if neighbor_id in {s.id for s in path}:
+                    continue
+
+                d = route.distance
+                energy_cost, travel_time = edge_cost_and_time(d)
+
+                if energy_cost > energy_left or travel_time > life_left:
+                    continue
+
+                neighbor_star = self.space_map.get_star(neighbor_id)
+                if not neighbor_star:
+                    continue
+
+                new_energy = energy_left - energy_cost
+                new_life = life_left - travel_time
+                score = heuristic_score(len(path) + 1, new_energy, new_life)
+                
+                neighbors.append((score, route, neighbor_id, neighbor_star, energy_cost, travel_time))
+
+            neighbors.sort(key=lambda x: x[0], reverse=True)
+            max_branches = min(6, len(neighbors))
+            
+            for i in range(max_branches):
+                _, route, neighbor_id, neighbor_star, energy_cost, travel_time = neighbors[i]
+                
+                path.append(neighbor_star)
+                optimized_search(neighbor_id,
+                               path,
+                               total_distance + route.distance,
+                               energy_left - energy_cost,
+                               life_left - travel_time,
+                               depth + 1)
+                path.pop()
+
+        # Execute search
+        optimized_search(start.id, [start], 0.0, remaining_energy, remaining_life)
+
+        # Prepare statistics
+        total_distance = round(best['distance'], 2)
+        life_consumed = round(distance_to_time(best['distance']), 2)
+        
+        stats = {
+            'stars_visited': len(best['visited']),
+            'total_distance': total_distance,
+            'life_time_consumed': life_consumed,
+            'path_stars': [star.label for star in best['visited']],
+            'json_values_used': {
+                'energia_inicial': energia_pct,
+                'edad_inicial': edad,
+                'death_age': death_age,
+                'pasto_inicial': pasto_kg,
+                'estado_salud': estado_salud,
+                'warp_factor': warp_factor,
+                'age_factor': age_factor
+            },
+            'notes': f'Valores EXCLUSIVAMENTE del JSON: energia={energia_pct}%, edad={edad}, death_age={death_age}, pasto={pasto_kg}kg, salud={estado_salud}'
+        }
+
+        return best['visited'], stats

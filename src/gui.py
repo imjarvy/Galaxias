@@ -104,6 +104,12 @@ class GalaxiasGUI:
                  command=self.optimize_eating_route,
                  bg='#FF44FF', fg='white', font=('Arial', 10, 'bold'),
                  relief=tk.RAISED, borderwidth=2).pack(pady=5)
+
+        # Max visit route button (NEW)
+        tk.Button(route_frame, text="Maximizar Estrellas Visitadas",
+                 command=self.calculate_max_visit_route,
+                 bg='#44FFAA', fg='black', font=('Arial', 10, 'bold'),
+                 relief=tk.RAISED, borderwidth=2).pack(pady=5)
         
         # Travel button
         self.travel_button = tk.Button(route_frame, text="Iniciar Viaje",
@@ -320,6 +326,79 @@ Ruta Optimizada:
         
         messagebox.showinfo("Ruta Optimizada", 
                            f"Ruta optimizada encontrada: {stats['stars_visited']} estrellas visitadas")
+    
+    def calculate_max_visit_route(self):
+        """Calculate route that maximizes number of stars visited using ONLY JSON values."""
+        start_id = self.extract_star_id(self.start_star_var.get())
+        
+        if not start_id:
+            messagebox.showerror("Error", "Selecciona una estrella de inicio")
+            return
+        
+        start_star = self.space_map.get_star(start_id)
+        if not start_star:
+            messagebox.showerror("Error", "Estrella de inicio no encontrada")
+            return
+        
+        # Usar SOLO valores del JSON - no parámetros del burro actual
+        max_path, stats = self.calculator.find_max_visit_route_from_json(start=start_star)
+        
+        if stats.get('error'):
+            messagebox.showerror("Error", stats['error'])
+            return
+        
+        if not max_path:
+            messagebox.showwarning("Sin Resultado", "No se pudo encontrar ruta válida con valores del JSON")
+            return
+        
+        # Set as current path
+        self.current_path = max_path
+        self.current_path_stats = self.calculator.calculate_path_stats(max_path)
+        
+        # Update info text
+        json_values = stats.get('json_values_used', {})
+        
+        info = f"""
+RUTA DE MÁXIMAS ESTRELLAS (SOLO VALORES DEL JSON)
+{'='*60}
+Estrellas Visitadas: {stats['stars_visited']}
+Distancia Total: {stats['total_distance']:.2f} unidades
+Tiempo de Vida Consumido: {stats['life_time_consumed']:.2f} años
+
+VALORES USADOS DEL JSON (INMUTABLES):
+- Energía Inicial: {json_values.get('energia_inicial', 'N/A')}%
+- Pasto Inicial: {json_values.get('pasto_inicial', 'N/A')} kg
+- Edad Inicial: {json_values.get('edad_inicial', 'N/A')} años
+- Death Age: {json_values.get('death_age', 'N/A')} años
+- Estado Salud: {json_values.get('estado_salud', 'N/A').title()}
+- Warp Factor: {json_values.get('warp_factor', 'N/A')}
+- Age Factor: {json_values.get('age_factor', 'N/A'):.2f}
+
+Secuencia de Estrellas:
+{' → '.join(stats['path_stars'])}
+
+IMPORTANTE: Esta ruta usa EXCLUSIVAMENTE los valores 
+iniciales del archivo constellations.json. No se 
+consideran cambios actuales del burro astronauta.
+
+{stats.get('notes', '')}
+        """
+        
+        self.info_text.delete(1.0, tk.END)
+        self.info_text.insert(1.0, info)
+        
+        # Enable travel button
+        self.travel_button.config(state=tk.NORMAL)
+        
+        # Update visualization
+        self.update_visualization()
+        
+        messagebox.showinfo("Ruta de Máximo Alcance (JSON)", 
+                           f"Ruta encontrada usando valores del JSON:\n"
+                           f"• {stats['stars_visited']} estrellas visitadas\n"
+                           f"• {stats['life_time_consumed']:.1f} años de vida\n"
+                           f"• Energía inicial: {json_values.get('energia_inicial')}%\n"
+                           f"• Edad inicial: {json_values.get('edad_inicial')} años")
     
     def start_journey(self):
         """Start the journey along the calculated path."""
