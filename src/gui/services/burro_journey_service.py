@@ -159,16 +159,17 @@ class BurroJourneyService:
         )
     
     def simulate_journey(self, path: List[Star], burro: BurroAstronauta) -> List[JourneyStep]:
-        """Simula un viaje completo aplicando toda la lógica unificada."""
+        """Simula un viaje completo aplicando toda la lógica unificada, usando el estado actual del burro."""
         if not path:
             return []
         try:
-            self.reset_burro_to_json_values(burro)
-            current_energy = self.initial_energy
-            current_grass = self.initial_grass
-            current_health = self.initial_health
-            current_life = self.initial_life_remaining
-            current_age = self.start_age
+            # Usar los valores actuales del burro, no los del JSON
+            current_energy = burro.current_energy
+            current_grass = burro.current_pasto
+            current_health = burro.estado_salud
+            current_age = burro.current_age
+            # Calcular vida restante según edad actual
+            current_life = self.death_age - current_age
             journey_steps = []
             for i, star in enumerate(path):
                 try:

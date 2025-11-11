@@ -129,18 +129,7 @@ class GalaxiasGUI:
         if not path:
             messagebox.showerror("Error", "No hay ruta para simular")
             return
-        
-        # Resetear burro a valores del JSON antes del viaje
-        self.journey_service.reset_burro_to_json_values(self.burro)
-        initial_msg = (f"\n🔄 REINICIANDO A VALORES DEL JSON:"
-                      f"\n✨ Energía inicial: {self.journey_service.initial_energy}%"
-                      f"\n🌾 Pasto inicial: {self.journey_service.initial_grass} kg"
-                      f"\n💚 Salud inicial: {self.journey_service.initial_health.upper()}"
-                      f"\n⏰ Vida restante: {self.journey_service.initial_life_remaining:.1f} años")
-        self.burro_controller.append_status_message(initial_msg)
-        self._update_all_displays()
-        self.root.update()
-        
+      
         # Simular el viaje completo con la lógica unificada
         start_msg = f"\n🚀 INICIANDO VIAJE - Ruta de {len(path)} estrellas"
         self.burro_controller.append_status_message(start_msg)
