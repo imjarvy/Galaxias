@@ -5,8 +5,8 @@ Módulo para agregar/remover cometas que bloquean rutas espaciales.
 import tkinter as tk
 from tkinter import ttk, messagebox, scrolledtext
 from typing import List, Tuple, Callable
-from src.models import Comet
-from src.comet_impact_system import CometImpactManager, RouteImpactResult
+from ..core import Comet
+from ..core.comet_impact_system import CometImpactManager, RouteImpactResult
 
 
 class CometManager:

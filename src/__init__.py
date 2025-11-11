@@ -1,29 +1,75 @@
 """
-Galaxias - Sistema del Burro Astronauta
+🌌 Sistema de Navegación Galaxias - Arquitectura Limpia
+======================================================
 
-Módulos principales:
-- models: Clases de datos (Star, Route, BurroAstronauta, SpaceMap)
-- route_calculator: Algoritmos de cálculo de rutas (Dijkstra)
-- visualizer: Visualizaciones con matplotlib
-- donkey_optimization: Optimización de rutas para el burro astronauta
-- gui: Interfaz gráfica con tkinter
+Arquitectura SOLID con separación clara de responsabilidades:
+
+CORE DOMAIN:
+- core/: Entidades fundamentales (Star, Route, BurroAstronauta, SpaceMap)
+- algorithms/: Algoritmos de cálculo (RouteCalculator, HyperGiantJumpSystem)  
+- presentation/: Visualización (SpaceVisualizer, LifeMonitor)
+- utils/: Utilidades compartidas (JSONHandler, Validators)
+
+PRESENTATION LAYER:
+- gui/: Interfaz gráfica modular siguiendo principios SOLID
+
+PUBLIC API:
+Exposición limpia de las funcionalidades principales del sistema.
 """
 
 __version__ = "2.0.0"
 __author__ = "imjarvy"
 
-from src.models import Star, Route, BurroAstronauta, Comet, SpaceMap
-from src.route_calculator import RouteCalculator
-from src.visualizer import SpaceVisualizer
-from src.donkey_optimization import DonkeyRouteOptimizer
+# Core Domain
+from .core import Star, Route, BurroAstronauta, SpaceMap
+
+# Algorithms
+from .algorithms import RouteCalculator, HyperGiantJumpSystem
+
+# Presentation  
+from .presentation import SpaceVisualizer, LifeMonitor
+
+# GUI (Main Entry Point)
+from .gui import main as gui_main
+
+# Utilities
+from .utils import JSONHandler, Validators, ValidationError
 
 __all__ = [
+    # Core Models
     'Star',
     'Route', 
     'BurroAstronauta',
-    'Comet',
     'SpaceMap',
+    
+    # Algorithms
     'RouteCalculator',
+    'HyperGiantJumpSystem',
+    
+    # Presentation
     'SpaceVisualizer',
-    'DonkeyRouteOptimizer'
+    'LifeMonitor',
+    
+    # Utilities
+    'JSONHandler',
+    'Validators',
+    'ValidationError',
+    
+    # Main entry point
+    'gui_main'
 ]
+
+def main():
+    """Punto de entrada principal de la aplicación."""
+    return gui_main()
+
+def create_galaxy():
+    """Factory method para crear una nueva galaxia."""
+    return SpaceMap()
+
+def calculate_route(start, goal, galaxy=None):
+    """Método de conveniencia para calcular rutas."""
+    if galaxy is None:
+        galaxy = create_galaxy()
+    calculator = RouteCalculator(galaxy)
+    return calculator.find_shortest_path(start, goal)

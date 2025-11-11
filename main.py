@@ -15,15 +15,15 @@ Uso:
 import sys
 import json
 import argparse
-from src.models import SpaceMap, BurroAstronauta, Comet
-from src.route_calculator import RouteCalculator
-from src.visualizer import SpaceVisualizer
-from src.donkey_optimization import DonkeyRouteOptimizer
+from src.core import SpaceMap, BurroAstronauta, Comet
+from src.algorithms.route_calculator import RouteCalculator
+from src.presentation.visualizer import SpaceVisualizer
+from src.algorithms.donkey_optimization import DonkeyRouteOptimizer
 
 
 def run_gui():
     """Run the graphical user interface."""
-    from src.gui import main
+    from src.gui.main_gui import main
     main()
 
 
