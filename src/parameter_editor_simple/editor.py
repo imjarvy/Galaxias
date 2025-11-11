@@ -535,8 +535,9 @@ class ResearchParameterEditor:
     def _confirm_changes(self):
         """Confirma los cambios y cierra el editor."""
         self._collect_current_values()
+        # Forzar recolección de configuraciones de estrellas editadas
+        # (ya se actualizan en self.params.custom_star_settings por save_star_config)
         self.cancelled = False
-        
         if messagebox.askyesno("Confirmar Configuración", 
                               "¿Aplicar esta configuración y recalcular la ruta optimizada?"):
             self.window.destroy()

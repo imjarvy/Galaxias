@@ -10,13 +10,13 @@ from .controllers import (
 from ..core import SpaceMap, BurroAstronauta
 from ..algorithms import HyperGiantJumpSystem
 
-def initialize_services():
+def initialize_services(research_params=None):
     config_service = ConfigurationService()
     config = config_service.load_configuration('data/spaceship_config.json')
     space_map = SpaceMap('data/constellations.json')
     route_service = RouteService(space_map, config)
     visualization_service = VisualizationService(space_map)
-    journey_service = BurroJourneyService(space_map)
+    journey_service = BurroJourneyService(space_map, research_params=research_params)
     return config_service, config, space_map, route_service, visualization_service, journey_service
 
 def initialize_models(space_map):

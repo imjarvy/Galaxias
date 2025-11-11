@@ -15,9 +15,9 @@ from src.utils.burro_utils.burro_math import calculate_eating_capacity, calculat
 class BurroJourneyService:
     """Servicio unificado para manejar toda la lógica del viaje del burro."""
     
-    def __init__(self, space_map):
+    def __init__(self, space_map, research_params=None):
         self.space_map = space_map
-        
+        self.research_params = research_params  # Puede ser None si no se usa
         # Cargar configuración del JSON
         self._load_json_config()
     
@@ -84,19 +84,36 @@ class BurroJourneyService:
     
     def process_star_visit(self, star: Star, current_energy: float, current_grass: float, 
                           current_health: str, current_life: float, current_age: float) -> JourneyStep:
-        """Procesa una visita completa a una estrella con toda la lógica."""
-        
+        """Procesa una visita completa a una estrella con toda la lógica, aplicando parámetros de investigación si existen."""
         # Estado al llegar
         energy_on_arrival = current_energy
         grass_on_arrival = current_grass
         health_on_arrival = current_health
         life_on_arrival = current_life
-        
+
+        # --- INICIO: Aplicar parámetros de investigación personalizados ---
+        # Valores por defecto
+        energy_rate = None
+        time_bonus = None
+        energy_bonus = None
+        if self.research_params:
+            star_id_str = str(star.id)
+            star_config = self.research_params.custom_star_settings.get(star_id_str, {})
+            energy_rate = star_config.get('energy_rate', self.research_params.energy_consumption_rate)
+            time_bonus = star_config.get('time_bonus', self.research_params.life_time_bonus)
+            energy_bonus = star_config.get('energy_bonus', self.research_params.energy_bonus_per_star)
+        else:
+            # Si no hay research_params, usar valores por defecto del sistema
+            energy_rate = 2.0
+            time_bonus = 0.0
+            energy_bonus = 0.0
+        # --- FIN: Aplicar parámetros de investigación personalizados ---
+
         # Análisis de tiempo en la estrella
         total_stay_time = star.radius
         eating_time_available = total_stay_time * self.eating_time_percentage
         research_time = total_stay_time * self.research_time_percentage
-        
+
         # Decisión de comer
         should_eat = current_energy < self.energy_eating_threshold
         kg_capacity = calculate_eating_capacity(star, eating_time_available)
@@ -110,27 +127,35 @@ class BurroJourneyService:
             )
             current_energy = min(100.0, current_energy + energy_gained_eating)
             current_grass -= kg_actually_eaten
-        energy_consumed_research, life_effect_research = calculate_research_effects(star)
+
+        # --- INICIO: Aplicar consumo y bonus de investigación personalizados ---
+        # Consumo de energía por investigación
+        energy_consumed_research = total_stay_time * energy_rate
+        # Bonus/penalty de tiempo de vida
+        life_effect_research = time_bonus
+        # Bonus de energía por estrella investigada
+        current_energy = min(100.0, current_energy + energy_bonus)
+        # --- FIN: Aplicar consumo y bonus de investigación personalizados ---
+
         current_energy = max(0.0, current_energy - energy_consumed_research)
         current_life += life_effect_research
-        
+
         # Efectos de hipergigante
         is_hypergiant = star.hypergiant
         hypergiant_energy_bonus = 0.0
         hypergiant_grass_bonus = 0.0
-        
+
         if is_hypergiant:
             # +50% de la energía actual
             hypergiant_energy_bonus = current_energy * self.hypergiant_energy_bonus_percentage
             current_energy = min(100.0, current_energy + hypergiant_energy_bonus)
-            
             # Duplica el pasto
             hypergiant_grass_bonus = current_grass
             current_grass *= self.hypergiant_grass_multiplier
-        
+
         # Actualizar estado de salud
         new_health = self.update_health_state(current_energy, current_life)
-        
+
         return JourneyStep(
             star=star,
             step_number=0,  # Se asignará externamente

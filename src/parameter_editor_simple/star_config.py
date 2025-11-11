@@ -76,7 +76,7 @@ class StarConfigManager:
             time_bonus: Bonus de tiempo
             energy_bonus: Bonus de energía
         """
-        self.research_params.custom_star_settings[star_id] = {
+        self.research_params.custom_star_settings[str(star_id)] = {
             'energy_rate': energy_rate,
             'time_bonus': time_bonus,
             'energy_bonus': energy_bonus
@@ -92,8 +92,9 @@ class StarConfigManager:
         Returns:
             True si se reseteó, False si no tenía configuración específica
         """
-        if star_id in self.research_params.custom_star_settings:
-            del self.research_params.custom_star_settings[star_id]
+        key = str(star_id)
+        if key in self.research_params.custom_star_settings:
+            del self.research_params.custom_star_settings[key]
             return True
         return False
     

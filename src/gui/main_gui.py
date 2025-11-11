@@ -38,9 +38,19 @@ class GalaxiasGUI:
     def __init__(self, root: tk.Tk):
         self.root = root
         self._setup_window()
-        # Modular initialization
+        # --- INICIO: Integración de parámetros de investigación ---
+        import os
+        import json
+        from ..parameter_editor_simple.models import ResearchParameters
+        self._params_path = 'data/research_params.json'
+        if os.path.exists(self._params_path):
+            with open(self._params_path, 'r', encoding='utf-8') as f:
+                self.research_params = ResearchParameters.from_dict(json.load(f))
+        else:
+            self.research_params = ResearchParameters()
+        # --- FIN ---
         (self.config_service, self.config, self.space_map, self.route_service,
-         self.visualization_service, self.journey_service) = initialize_services()
+         self.visualization_service, self.journey_service) = initialize_services(self.research_params)
         self.burro, self.hypergiant_system = initialize_models(self.space_map)
         (self.route_panel, self.burro_panel, self.reports_panel, self.visualization_panel) = initialize_components(self.space_map, self.burro)
         (self.route_controller, self.burro_controller, self.visualization_controller) = initialize_controllers(
@@ -55,6 +65,23 @@ class GalaxiasGUI:
         )
         self._setup_layout()
         self._initial_updates()
+
+    def open_research_parameter_editor(self):
+        """Abre el editor de parámetros de investigación y actualiza el sistema si se confirman cambios."""
+        import json
+        from ..parameter_editor_simple.editor import ResearchParameterEditor
+        editor = ResearchParameterEditor(self.root, self.space_map, initial_params=self.research_params)
+        self.root.wait_window(editor.window)
+        params = editor.get_parameters()
+        if params:
+            self.research_params = params
+            # Guardar en disco
+            with open(self._params_path, 'w', encoding='utf-8') as f:
+                json.dump(self.research_params.to_dict(), f, indent=2, ensure_ascii=False)
+            # Reinicializar journey_service con los nuevos parámetros
+            self.journey_service = BurroJourneyService(self.space_map, research_params=self.research_params)
+            # Refrescar GUI y rutas
+            self._update_all_displays()
     
     def _setup_window(self):
         """Configure the main window."""
