@@ -29,13 +29,15 @@ from .editor import ResearchParameterEditor
 from .presets import PresetManager
 from .star_config import StarConfigManager
 from .preview import PreviewGenerator
+from .comet_manager import CometManager
 
 __all__ = [
     'ResearchParameters',
     'ResearchParameterEditor', 
     'PresetManager',
     'StarConfigManager',
-    'PreviewGenerator'
+    'PreviewGenerator',
+    'CometManager'
 ]
 
 __version__ = "1.0.0"

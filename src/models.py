@@ -60,12 +60,19 @@ class BurroAstronauta:
     current_energy: int = 0
     current_pasto: int = 0
     
+    # Nuevos campos para monitoreo de vida
+    current_age: float = 0.0  # Edad actual considerando tiempo transcurrido
+    total_life_consumed: float = 0.0  # Total de vida consumida en años
+    life_monitor = None  # Instancia del monitor de vida (se asigna externamente)
+    
     def __post_init__(self):
         """Initialize current values from initial values."""
         if self.current_energy == 0:
             self.current_energy = self.energia_inicial
         if self.current_pasto == 0:
             self.current_pasto = self.pasto
+        if self.current_age == 0.0:
+            self.current_age = float(self.start_age)
     
     def consume_resources_eating_star(self, star: Star):
         """Consume resources when eating a star."""
@@ -91,6 +98,17 @@ class BurroAstronauta:
         energy_consumed = int(distance * 0.1 * age_factor)
         
         self.current_energy = max(0, self.current_energy - energy_consumed)
+        
+        # Nuevo: Consumir tiempo de vida si hay monitor activo
+        if self.life_monitor and self.life_monitor.is_monitoring:
+            life_info = self.life_monitor.consume_life_for_travel(distance)
+            self.current_age = life_info['current_age']
+            self.total_life_consumed += life_info['life_consumed']
+            
+            # Verificar si murió por edad
+            if life_info['death_imminent']:
+                self.estado_salud = "muerto"
+        
         self._update_health_state()
     
     def _update_health_state(self):
@@ -108,7 +126,10 @@ class BurroAstronauta:
     
     def is_alive(self) -> bool:
         """Check if the donkey astronaut is still alive."""
-        return self.estado_salud != "muerto" and self.current_pasto > 0
+        # Revisar estado de salud Y vida restante
+        alive_by_health = self.estado_salud != "muerto" and self.current_pasto > 0
+        alive_by_age = self.current_age < self.death_age
+        return alive_by_health and alive_by_age
     
     def get_health_state(self) -> str:
         """Get the current health state of the donkey."""
@@ -137,20 +158,112 @@ class BurroAstronauta:
         """Restore resources to initial values."""
         self.current_energy = self.energia_inicial
         self.current_pasto = self.pasto
+        self.current_age = float(self.start_age)
+        self.total_life_consumed = 0.0
         self.estado_salud = "excelente" if self.current_energy > 75 else "buena"
+        
+        # Reiniciar monitor de vida si existe
+        if self.life_monitor:
+            self.life_monitor.start_monitoring(self.current_age, self.death_age)
     
     def get_status(self) -> Dict:
         """Get current status of the donkey."""
-        return {
+        status = {
             'name': self.name,
             'energia': self.current_energy,
             'estado_salud': self.estado_salud,
             'pasto': self.current_pasto,
-            'edad': self.start_age,
+            'edad_inicial': self.start_age,
+            'edad_actual': self.current_age,
+            'edad_muerte': self.death_age,
+            'vida_restante': max(0, self.death_age - self.current_age),
+            'vida_consumida': self.total_life_consumed,
             'location': self.current_location.label if self.current_location else 'Unknown',
             'journey_length': len(self.journey_history),
             'is_alive': self.is_alive()
         }
+        
+        # Agregar información del monitor si existe
+        if self.life_monitor:
+            life_status = self.life_monitor.get_status()
+            status.update({
+                'life_monitor_active': life_status['is_monitoring'],
+                'life_percentage': life_status['life_percentage']
+            })
+        
+        return status
+
+    def set_life_monitor(self, life_monitor):
+        """
+        Configura el monitor de vida para este burro astronauta.
+        
+        Args:
+            life_monitor: Instancia de LifeMonitor
+        """
+        self.life_monitor = life_monitor
+        if life_monitor and not life_monitor.is_monitoring:
+            life_monitor.start_monitoring(self.current_age, self.death_age)
+    
+    def get_remaining_life(self) -> float:
+        """Obtiene el tiempo de vida restante en años."""
+        return max(0, self.death_age - self.current_age)
+    
+    def get_life_percentage(self) -> float:
+        """Obtiene el porcentaje de vida restante."""
+        total_expected_life = self.death_age - self.start_age
+        life_used = self.current_age - self.start_age
+        if total_expected_life <= 0:
+            return 0.0
+        return max(0, ((total_expected_life - life_used) / total_expected_life) * 100)
+    
+    def calculate_travel_life_cost(self, distance: float) -> float:
+        """
+        Calcula cuánto tiempo de vida costará un viaje sin ejecutarlo.
+        
+        Args:
+            distance: Distancia del viaje
+            
+        Returns:
+            float: Tiempo de vida que consumirá el viaje en años
+        """
+        if self.life_monitor:
+            return self.life_monitor.calculator.distance_to_life_years(distance)
+        else:
+            # Fallback: usar warp_factor por defecto
+            try:
+                import json
+                with open("data/spaceship_config.json", 'r') as f:
+                    config = json.load(f)
+                warp_factor = config.get('scientific_parameters', {}).get('warp_factor', 1.0)
+                return distance / warp_factor
+            except:
+                return distance  # Sin warp_factor, 1:1
+    
+    def can_survive_travel(self, distance: float) -> bool:
+        """
+        Verifica si el burro puede sobrevivir un viaje de cierta distancia.
+        
+        Args:
+            distance: Distancia del viaje
+            
+        Returns:
+            bool: True si puede sobrevivir el viaje
+        """
+        if not self.is_alive():
+            return False
+        
+        # Verificar energía para el viaje (recursos regulares)
+        age_factor = max(1, (self.start_age - 5) / 10)
+        energy_needed = int(distance * 0.1 * age_factor)
+        
+        if self.current_energy <= energy_needed or self.current_pasto <= 0:
+            return False
+        
+        # Verificar si tendrá vida suficiente
+        life_cost = self.calculate_travel_life_cost(distance)
+        remaining_after_travel = self.get_remaining_life() - life_cost
+        
+        return remaining_after_travel > 0
 
 
 @dataclass

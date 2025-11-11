@@ -13,6 +13,11 @@ from src.visualizer import SpaceVisualizer
 from src.donkey_optimization import DonkeyRouteOptimizer
 from src.parameter_editor_simple import ResearchParameterEditor, ResearchParameters
 from src.research_impact_validator import ResearchImpactValidatorGUI
+from src.life_monitor import LifeMonitor, BasicSoundManager
+from src.gui_life_monitor import (TkinterAlertSystem, GuiLifeStatusWidget, 
+                                   TravelDistanceAnalyzer, LifeEventLogger)
+from src.hypergiant_jump import HyperGiantJumpSystem
+from src.gui_hypergiant_jump import HyperGiantJumpGUI
 
 
 class GalaxiasGUI:
@@ -34,10 +39,29 @@ class GalaxiasGUI:
         # Initialize burro astronauta
         self.burro = self.space_map.create_burro_astronauta()
         
+        # Initialize life monitoring system
+        self.life_alert_system = TkinterAlertSystem(self.root)
+        self.life_sound_manager = BasicSoundManager()
+        self.life_monitor = LifeMonitor(
+            alert_system=self.life_alert_system,
+            sound_manager=self.life_sound_manager
+        )
+        self.life_event_logger = LifeEventLogger()
+        self.travel_analyzer = TravelDistanceAnalyzer(self.root)
+        
+        # Configure burro with life monitor
+        self.burro.set_life_monitor(self.life_monitor)
+        self.life_monitor.add_observer(self.life_event_logger)
+        self.travel_analyzer.set_burro(self.burro)
+        
         # Initialize calculator, visualizer, and optimizer
         self.calculator = RouteCalculator(self.space_map, self.config)
         self.visualizer = SpaceVisualizer(self.space_map)
         self.optimizer = DonkeyRouteOptimizer(self.space_map)
+        
+        # Initialize hypergiant jump system
+        self.hypergiant_system = HyperGiantJumpSystem(self.space_map)
+        self.hypergiant_gui = HyperGiantJumpGUI(self.root, self.space_map, self.burro)
         
         # Research parameters for min cost calculations
         self.research_parameters = ResearchParameters()
@@ -48,6 +72,9 @@ class GalaxiasGUI:
         # Current path
         self.current_path = None
         self.current_path_stats = None
+        
+        # Comet impact manager (will be initialized in parameter editor)
+        self.comet_impact_manager = None
         
         # Setup UI
         self.setup_ui()
@@ -168,34 +195,32 @@ class GalaxiasGUI:
                  bg='#FFAA44', fg='black', font=('Arial', 10, 'bold'),
                  relief=tk.RAISED, borderwidth=2).pack(pady=5)
         
-        # Comet Management Section
-        comet_frame = tk.LabelFrame(left_panel, text="Gestión de Cometas",
-                                   font=('Arial', 12, 'bold'),
-                                   bg='#000066', fg='white',
-                                   relief=tk.GROOVE, borderwidth=2)
-        comet_frame.pack(fill=tk.BOTH, padx=10, pady=5)
+        # Life Monitor Section (NEW)
+        life_frame = tk.LabelFrame(left_panel, text="Monitoreo de Vida",
+                                  font=('Arial', 12, 'bold'),
+                                  bg='#000066', fg='white',
+                                  relief=tk.GROOVE, borderwidth=2)
+        life_frame.pack(fill=tk.X, padx=10, pady=5)
         
-        tk.Label(comet_frame, text="Nombre del Cometa:", 
-                bg='#000066', fg='white').pack(anchor=tk.W, padx=5, pady=(5,0))
+        # Widget de estado de vida
+        self.life_status_widget = GuiLifeStatusWidget(life_frame)
+        self.life_status_widget.pack(fill=tk.X, padx=5, pady=5)
         
-        self.comet_name_entry = tk.Entry(comet_frame, width=25, bg='#000033', fg='white')
-        self.comet_name_entry.pack(padx=5, pady=5)
+        # Botón para análisis de viaje
+        tk.Button(life_frame, text="📊 Analizar Próximo Viaje",
+                 command=self.analyze_next_travel,
+                 bg='#6633FF', fg='white', font=('Arial', 9, 'bold'),
+                 relief=tk.RAISED, borderwidth=2).pack(pady=2)
         
-        tk.Label(comet_frame, text="Ruta a Bloquear (desde_id,hasta_id):", 
-                bg='#000066', fg='white').pack(anchor=tk.W, padx=5)
+        # Botón para simular countdown (DEMO)
+        tk.Button(life_frame, text="⏰ Demo Countdown",
+                 command=self.demo_countdown,
+                 bg='#FF3366', fg='white', font=('Arial', 9, 'bold'),
+                 relief=tk.RAISED, borderwidth=2).pack(pady=2)
         
-        self.comet_route_entry = tk.Entry(comet_frame, width=25, bg='#000033', fg='white')
-        self.comet_route_entry.pack(padx=5, pady=5)
-        
-        tk.Button(comet_frame, text="Agregar Cometa",
-                 command=self.add_comet,
-                 bg='#FF4444', fg='white', font=('Arial', 10, 'bold'),
-                 relief=tk.RAISED, borderwidth=2).pack(pady=5)
-        
-        tk.Button(comet_frame, text="Remover Cometa",
-                 command=self.remove_comet,
-                 bg='#44FFFF', fg='black', font=('Arial', 10, 'bold'),
-                 relief=tk.RAISED, borderwidth=2).pack(pady=5)
+        # === COMET MANAGEMENT MOVED TO SCIENTIFIC PANEL ===
+        # La gestión de cometas ahora está disponible en el panel científico
+        # Acceso: ⚙️ Configurar Parámetros → pestaña "🌌 Cometas"
         
         # Reports Section
         report_frame = tk.LabelFrame(left_panel, text="Reportes",
@@ -269,6 +294,9 @@ class GalaxiasGUI:
         self.current_path = path
         self.current_path_stats = self.calculator.calculate_path_stats(path)
         
+        # Register as active journey for comet impact analysis
+        self._register_active_journey(path, "optimal")
+        
         # Update info text
         info = f"""
 RUTA CALCULADA
@@ -325,6 +353,9 @@ Ruta: {' → '.join(self.current_path_stats['path_stars'])}
         # Set as current path
         self.current_path = optimal_path
         self.current_path_stats = self.calculator.calculate_path_stats(optimal_path)
+        
+        # Register as active journey for comet impact analysis
+        self._register_active_journey(optimal_path, "eating_optimization")
         
         # Update info text
         info = f"""
@@ -604,49 +635,22 @@ REGLAS DE MENOR GASTO POSIBLE:
         messagebox.showinfo("Recursos Restaurados", "Recursos restaurados a valores iniciales")
     
     def add_comet(self):
-        """Add a comet to block a route."""
-        comet_name = self.comet_name_entry.get().strip()
-        route_spec = self.comet_route_entry.get().strip()
-        
-        if not comet_name or not route_spec:
-            messagebox.showerror("Error", "Ingrese nombre del cometa y ruta a bloquear")
-            return
-        
-        # Parse route specification
-        try:
-            from_id, to_id = route_spec.split(',')
-            from_id = from_id.strip()
-            to_id = to_id.strip()
-        except ValueError:
-            messagebox.showerror("Error", "Formato de ruta inválido. Use: desde_id,hasta_id")
-            return
-        
-        # Create and add comet
-        comet = Comet(name=comet_name, blocked_routes=[(from_id, to_id)])
-        self.space_map.add_comet(comet)
-        
-        self.update_visualization()
-        messagebox.showinfo("Cometa Agregado", 
-                           f"Cometa '{comet_name}' agregado.\n"
-                           f"Ruta bloqueada: {from_id} ↔ {to_id}")
-        
-        # Clear entries
-        self.comet_name_entry.delete(0, tk.END)
-        self.comet_route_entry.delete(0, tk.END)
+        """Add a comet to block a route - MOVED TO SCIENTIFIC PANEL."""
+        messagebox.showinfo("Función Reubicada", 
+                           "🌌 La gestión de cometas se ha movido al panel científico.\n\n"
+                           "Para agregar/remover cometas:\n"
+                           "1. Haga clic en '⚙️ Configurar Parámetros'\n"
+                           "2. Vaya a la pestaña '🌌 Cometas'\n"
+                           "3. Use la interfaz mejorada para gestionar cometas")
     
     def remove_comet(self):
-        """Remove a comet."""
-        comet_name = self.comet_name_entry.get().strip()
-        
-        if not comet_name:
-            messagebox.showerror("Error", "Ingrese el nombre del cometa a remover")
-            return
-        
-        self.space_map.remove_comet(comet_name)
-        self.update_visualization()
-        messagebox.showinfo("Cometa Removido", f"Cometa '{comet_name}' removido")
-        
-        self.comet_name_entry.delete(0, tk.END)
+        """Remove a comet - MOVED TO SCIENTIFIC PANEL."""
+        messagebox.showinfo("Función Reubicada", 
+                           "🌌 La gestión de cometas se ha movido al panel científico.\n\n"
+                           "Para agregar/remover cometas:\n"
+                           "1. Haga clic en '⚙️ Configurar Parámetros'\n"
+                           "2. Vaya a la pestaña '🌌 Cometas'\n"
+                           "3. Use la interfaz mejorada para gestionar cometas")
     
     def generate_report(self):
         """Generate visual report."""
@@ -675,7 +679,14 @@ Ubicación: {status['location']}
 RECURSOS:
   Energía:     {status['energia']}% / 100%
   Pasto:       {status['pasto']} kg
-  Edad:        {status['edad']} años
+  Edad inicial:{status['edad_inicial']} años
+  Edad actual: {status['edad_actual']:.1f} años
+
+TIEMPO DE VIDA:
+  Vida restante:   {status['vida_restante']:.1f} años
+  Vida consumida:  {status['vida_consumida']:.1f} años
+  Muerte prevista: {status['edad_muerte']} años
+  Monitor activo:  {'Sí' if status.get('life_monitor_active', False) else 'No'}
 
 ESTADO:
   Salud:       {status['estado_salud'].upper()}
@@ -689,6 +700,10 @@ DATOS JSON:
         
         self.status_text.delete(1.0, tk.END)
         self.status_text.insert(1.0, status_str)
+        
+        # Actualizar widget de vida
+        if hasattr(self, 'life_status_widget'):
+            self.life_status_widget.update_status(status)
     
     def update_visualization(self):
         """Update the space map visualization."""
@@ -717,8 +732,13 @@ DATOS JSON:
             self.status_text.see(tk.END)
             self.root.update()
             
-            # Crear editor con parámetros actuales
-            editor = ResearchParameterEditor(self.root, self.space_map, self.research_parameters)
+            # Crear editor con parámetros actuales y callback de visualización
+            editor = ResearchParameterEditor(self.root, self.space_map, self.research_parameters, 
+                                           self.update_visualization)
+            
+            # Pasar el manager de impacto de cometas al editor si existe
+            if hasattr(editor, 'comet_manager'):
+                editor.comet_manager.comet_impact_manager = self._get_comet_impact_manager()
             
             # Esperar a que se cierre la ventana
             self.root.wait_window(editor.window)
@@ -946,6 +966,159 @@ DATOS JSON:
             messagebox.showerror("Error", f"Error al abrir validador de impactos: {str(e)}")
             self.status_text.insert(tk.END, f"\n❌ Error: {str(e)}")
             self.status_text.see(tk.END)
+    
+    def analyze_next_travel(self):
+        """Analiza el costo de vida del próximo viaje planificado incluyendo saltos hipergigantes."""
+        try:
+            if not self.current_path or len(self.current_path) < 2:
+                messagebox.showinfo("Sin Ruta", 
+                                  "Primero calcule una ruta para analizar su costo de vida.")
+                return
+            
+            # Verificar saltos hipergigantes en la ruta
+            hypergiant_jumps_needed = []
+            total_distance = 0
+            route_description = f"{self.current_path[0].label}"
+            
+            for i in range(len(self.current_path) - 1):
+                from_star = self.current_path[i]
+                to_star = self.current_path[i + 1]
+                
+                # Verificar si este segmento requiere salto hipergigante
+                if self.hypergiant_system.requires_hypergiant_jump(from_star, to_star):
+                    from_constellation = self.hypergiant_system.get_star_constellation(from_star)
+                    to_constellation = self.hypergiant_system.get_star_constellation(to_star)
+                    hypergiant_jumps_needed.append({
+                        'from': from_star.label,
+                        'to': to_star.label,
+                        'from_constellation': from_constellation,
+                        'to_constellation': to_constellation
+                    })
+                
+                # Buscar distancia de la ruta
+                for route in self.space_map.routes:
+                    if ((route.from_star == from_star and route.to_star == to_star) or
+                        (route.to_star == from_star and route.from_star == to_star)):
+                        total_distance += route.distance
+                        break
+                
+                route_description += f" → {to_star.label}"
+            
+            # Si hay saltos hipergigantes necesarios, mostrar advertencia
+            if hypergiant_jumps_needed:
+                message = "🌌 SALTOS HIPERGIGANTES REQUERIDOS EN LA RUTA\n\n"
+                message += "Los siguientes segmentos requieren saltos hipergigantes:\n\n"
+                
+                for jump in hypergiant_jumps_needed:
+                    message += f"• {jump['from']} → {jump['to']}\n"
+                    message += f"  ({jump['from_constellation']} → {jump['to_constellation']})\n\n"
+                
+                message += "Beneficios por cada salto hipergigante:\n"
+                message += "⚡ +50% energía actual\n"
+                message += "🌱 x2 pasto en bodega\n\n"
+                message += "¿Continuar con análisis estándar?"
+                
+                response = messagebox.askyesno("Saltos Hipergigantes Detectados", message)
+                if not response:
+                    return
+            
+            # Mostrar análisis de viaje
+            self.travel_analyzer.show_travel_preview(total_distance, route_description)
+            
+            # Agregar información sobre saltos hipergigantes al análisis
+            if hypergiant_jumps_needed:
+                self.status_text.insert(tk.END, f"\n🌌 SALTOS HIPERGIGANTES NECESARIOS: {len(hypergiant_jumps_needed)}")
+                for jump in hypergiant_jumps_needed:
+                    self.status_text.insert(tk.END, f"\n  • {jump['from']} → {jump['to']} (cambio de constelación)")
+                self.status_text.see(tk.END)
+            
+        except Exception as e:
+            messagebox.showerror("Error", f"Error al analizar viaje: {str(e)}")
+    
+    def demo_countdown(self):
+        """Demuestra el contador decremental con un viaje simulado."""
+        try:
+            # Simular un viaje corto para ver el efecto countdown
+            demo_distance = 50  # 33 años de vida con warp_factor 1.5
+            
+            response = messagebox.askyesno("Demo Countdown", 
+                f"🎮 DEMO: Simular viaje con countdown en tiempo real\n\n"
+                f"📏 Distancia: {demo_distance} unidades\n"
+                f"⏰ Costo de vida: ~{demo_distance/1.5:.1f} años\n"
+                f"🕐 Duración del demo: ~{demo_distance/1.5:.0f} segundos\n\n"
+                f"El contador decrementará visualmente y emitirá sonido si llega a 0.\n\n"
+                f"¿Iniciar demostración?")
+            
+            if response:
+                # Activar countdown acelerado en el widget
+                if hasattr(self, 'life_status_widget'):
+                    self.life_status_widget.simulate_travel_countdown(demo_distance)
+                    
+                    # Mostrar mensaje en el status
+                    self.status_text.insert(tk.END, f"\n🎮 DEMO COUNTDOWN INICIADO:")
+                    self.status_text.insert(tk.END, f"\n   Observe el contador decremental en tiempo real")
+                    self.status_text.insert(tk.END, f"\n   ⏰ Costo de vida: {demo_distance/1.5:.1f} años")
+                    self.status_text.see(tk.END)
+                else:
+                    messagebox.showwarning("Widget no disponible", 
+                                         "El widget de vida no está inicializado")
+            
+        except Exception as e:
+            messagebox.showerror("Error", f"Error en demo countdown: {str(e)}")
+    
+    def check_hypergiant_requirements(self, from_star, to_star):
+        """
+        Verifica si un viaje requiere salto hipergigante y maneja el proceso.
+        
+        Args:
+            from_star: Estrella de origen
+            to_star: Estrella de destino
+            
+        Returns:
+            bool: True si se procesó un salto hipergigante, False si es viaje normal
+        """
+        if self.hypergiant_system.requires_hypergiant_jump(from_star, to_star):
+            # Mostrar información sobre el salto requerido
+            from_constellation = self.hypergiant_system.get_star_constellation(from_star)
+            to_constellation = self.hypergiant_system.get_star_constellation(to_star)
+            
+            message = (f"🌌 SALTO HIPERGIGANTE REQUERIDO\n\n"
+                      f"📍 Origen: {from_star.label} ({from_constellation})\n"
+                      f"🎯 Destino: {to_star.label} ({to_constellation})\n\n"
+                      f"Para viajar entre constelaciones diferentes,\n"
+                      f"debe usar una estrella hipergigante.\n\n"
+                      f"Beneficios del salto hipergigante:\n"
+                      f"⚡ +50% energía actual\n"
+                      f"🌱 x2 pasto en bodega\n\n"
+                      f"¿Abrir planificador de saltos?")
+            
+            response = messagebox.askyesno("Salto Hipergigante Requerido", message)
+            
+            if response:
+                return self.hypergiant_gui.show_jump_planner(from_star, to_star)
+            else:
+                self.status_text.insert(tk.END, f"\n❌ Salto hipergigante cancelado por el usuario")
+                self.status_text.see(tk.END)
+                return True  # Procesado (aunque cancelado)
+        
+        return False  # No requiere salto hipergigante
+    
+    def _register_active_journey(self, path, journey_type: str = "unknown"):
+        """Registra un viaje activo para análisis de impacto de cometas."""
+        if self.comet_impact_manager and path and len(path) > 1:
+            self.comet_impact_manager.register_active_journey(path, 0, journey_type)
+    
+    def _get_comet_impact_manager(self):
+        """Obtiene o inicializa el gestor de impacto de cometas."""
+        if not self.comet_impact_manager:
+            from src.comet_impact_system import CometImpactManager
+            self.comet_impact_manager = CometImpactManager(self.space_map)
+        return self.comet_impact_manager
+    
+    def get_alternative_routes(self, origin_id: str, destination_id: str):
+        """Obtiene rutas alternativas entre dos puntos."""
+        manager = self._get_comet_impact_manager()
+        return manager.get_current_alternatives(origin_id, destination_id)
 
 
 def main():

@@ -1,5 +1,6 @@
 """
 Sistema de optimización de rutas para el Burro Astronauta con criterio de MENOR GASTO POSIBLE.
+NUEVO: Incluye lógica de saltos hipergigantes para cambios de constelación.
 
 Implementa las reglas específicas:
 - Si energía < 50% el burro puede comer en la estrella
@@ -8,6 +9,7 @@ Implementa las reglas específicas:
 - Consumo de energía por investigación
 - Una estrella solo puede visitarse una vez
 - Objetivo: menor gasto posible visitando máximo estrellas
+- NUEVO: Saltos hipergigantes obligatorios para cambios de constelación con beneficios
 """
 import argparse
 import json
@@ -20,6 +22,7 @@ from dataclasses import dataclass
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from src.models import SpaceMap, Star, Route
 from src.parameter_editor_simple import ResearchParameters
+from src.hypergiant_jump import HyperGiantJumpSystem
 
 
 @dataclass

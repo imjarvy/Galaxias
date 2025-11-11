@@ -11,16 +11,19 @@ from .models import ResearchParameters
 from .presets import PresetManager
 from .star_config import StarConfigManager
 from .preview import PreviewGenerator
+from .comet_manager import CometManager
 
 
 class ResearchParameterEditor:
     """Editor gráfico para parámetros de investigación."""
     
-    def __init__(self, parent, space_map, initial_params: Optional[ResearchParameters] = None):
+    def __init__(self, parent, space_map, initial_params: Optional[ResearchParameters] = None, 
+                 update_visualization_callback: Optional[Callable] = None):
         self.parent = parent
         self.space_map = space_map
         self.result_callback: Optional[Callable] = None
         self.cancelled = True
+        self.update_visualization_callback = update_visualization_callback
         
         # Parámetros iniciales
         self.params = initial_params or ResearchParameters()
@@ -29,6 +32,7 @@ class ResearchParameterEditor:
         self.preset_manager = PresetManager()
         self.star_manager = StarConfigManager(space_map, self.params)
         self.preview_generator = PreviewGenerator(space_map)
+        self.comet_manager = CometManager(space_map, self._handle_comet_update)
         
         # Crear ventana
         self._create_window()
@@ -71,6 +75,7 @@ class ResearchParameterEditor:
         # Crear pestañas
         self._setup_general_params_tab()
         self._setup_star_specific_tab()
+        self._setup_comet_management_tab()
         self._setup_presets_tab()
         
         # Botones de acción
@@ -245,6 +250,40 @@ class ResearchParameterEditor:
                  command=self._apply_to_all_stars,
                  bg='#8844CC', fg='white', font=('Arial', 10, 'bold')).pack(side=tk.RIGHT)
     
+    def _setup_comet_management_tab(self):
+        """Configura la pestaña de gestión de cometas."""
+        frame = tk.Frame(self.notebook, bg='#001122')
+        self.notebook.add(frame, text="🌌 Cometas")
+        
+        # Crear el gestor de cometas en esta pestaña
+        self.comet_manager.create_ui(frame)
+        
+        # Información adicional sobre cometas
+        info_frame = tk.LabelFrame(frame, text="ℹ️ Información sobre Cometas",
+                                  font=('Arial', 12, 'bold'), bg='#001122', fg='white',
+                                  relief=tk.GROOVE, borderwidth=2)
+        info_frame.pack(fill=tk.X, padx=10, pady=(10, 5))
+        
+        info_text = """Los cometas son objetos que bloquean rutas espaciales de manera bidireccional. 
+
+🌟 Características:
+• Un cometa bloquea la ruta en ambas direcciones automáticamente
+• Pueden ser agregados y removidos dinámicamente durante la simulación
+• Solo afectan las rutas específicas que se configuran
+• Su presencia cambia la visualización del mapa (rutas rojas)
+
+⚠️ Importante:
+• Si una ruta está bloqueada por un cometa, no se puede viajar por ella
+• Los algoritmos de enrutamiento evitarán automáticamente rutas bloqueadas
+• Al remover un cometa, todas sus rutas quedan disponibles nuevamente"""
+
+        text_widget = tk.Text(info_frame, height=12, wrap=tk.WORD, 
+                             bg='#000033', fg='white', font=('Arial', 9),
+                             relief=tk.SUNKEN, borderwidth=1)
+        text_widget.pack(fill=tk.X, padx=10, pady=10)
+        text_widget.insert(1.0, info_text)
+        text_widget.config(state=tk.DISABLED)
+
     def _setup_presets_tab(self):
         """Configura la pestaña de presets."""
         frame = tk.Frame(self.notebook, bg='#002244')
@@ -511,3 +550,16 @@ class ResearchParameterEditor:
     def get_parameters(self) -> Optional[ResearchParameters]:
         """Retorna los parámetros configurados o None si se canceló."""
         return None if self.cancelled else self.params
+    
+    def _handle_comet_update(self):
+        """Maneja las actualizaciones cuando cambian los cometas."""
+        # Si hay callback de visualización del GUI principal, llamarlo
+        if self.update_visualization_callback:
+            self.update_visualization_callback()
+    
+    def _update_preview(self):
+        """Actualiza la vista previa cuando cambian los cometas (callback)."""
+        # Este método es llamado por el comet_manager cuando se agregan/remueven cometas
+        # No necesita hacer nada específico aquí ya que las rutas se actualizan automáticamente
+        # en el space_map, pero podría usarse para notificar cambios a otros componentes
+        pass
