@@ -33,7 +33,7 @@ class VisualizationController:
         try:
             if not path_stats:
                 # Use empty stats if none provided
-                from src.route_calculator import RouteCalculator
+                from ...algorithms import RouteCalculator
                 from ...core import SpaceMap
                 space_map = SpaceMap('data/constellations.json')
                 config = {}
