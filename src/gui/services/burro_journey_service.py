@@ -3,58 +3,13 @@ Burro Journey Service.
 Implementa la lógica unificada del viaje del burro según especificaciones del JSON.
 Sigue principios SOLID - Single Responsibility para manejo de lógica de viaje.
 """
+
 from typing import List, Dict, Optional, Tuple
-from dataclasses import dataclass
-import math
 from ...core import Star, BurroAstronauta
+from src.utils.burro_utils.journey_step import JourneyStep
+from src.utils.burro_utils.burro_math import calculate_eating_capacity, calculate_energy_from_eating, calculate_research_effects
 
 
-@dataclass
-class JourneyStep:
-    """Representa un paso del viaje con todos los cálculos detallados."""
-    star: Star
-    step_number: int
-    
-    # Estado al llegar
-    energy_on_arrival: float
-    grass_on_arrival: float
-    health_on_arrival: str
-    life_remaining_on_arrival: float
-    
-    # Análisis de tiempo en la estrella
-    total_stay_time: float  # radius de la estrella
-    eating_time_available: float  # 50% del stay time
-    research_time: float  # 50% del stay time
-    
-    # Decisión de comer
-    should_eat: bool  # Si energía < 50%
-    can_eat: bool  # Si tiene suficiente pasto y tiempo
-    kg_to_eat: float
-    kg_actually_eaten: float
-    
-    # Cálculos de energía por comer
-    energy_gained_eating: float
-    health_bonus_percentage: float
-    
-    # Investigación
-    energy_consumed_research: float
-    life_effect_research: float  # Puede ser positivo o negativo
-    
-    # Efectos de hipergigante
-    is_hypergiant: bool
-    hypergiant_energy_bonus: float
-    hypergiant_grass_bonus: float
-    
-    # Estado final después de la estrella
-    energy_after_star: float
-    grass_after_star: float
-    health_after_star: str
-    life_remaining_after_star: float
-    
-    # Estado para siguiente viaje
-    travel_distance_next: Optional[float] = None
-    energy_consumed_travel: Optional[float] = None
-    life_consumed_travel: Optional[float] = None
 
 
 class BurroJourneyService:
@@ -97,42 +52,6 @@ class BurroJourneyService:
         """Obtiene el bonus de energía por kg según estado de salud."""
         return self.health_bonuses.get(health_state.lower(), 0.02)
     
-    def calculate_eating_capacity(self, star: Star, available_time: float) -> float:
-        """Calcula cuánto pasto puede comer en el tiempo disponible."""
-        if star.time_to_eat <= 0:
-            return 0.0
-        
-        # Kg que puede comer = tiempo_disponible / tiempo_por_kg
-        kg_capacity = available_time / star.time_to_eat
-        return math.floor(kg_capacity)  # Solo kg completos
-    
-    def calculate_energy_from_eating(self, star: Star, kg_eaten: float, health_state: str) -> float:
-        """Calcula la energía ganada al comer pasto en una estrella."""
-        if kg_eaten <= 0:
-            return 0.0
-        
-        # Energía base de la estrella
-        base_energy = star.amount_of_energy * 10
-        
-        # Bonus por kg según estado de salud
-        health_bonus = self.get_health_bonus_percentage(health_state)
-        eating_bonus = kg_eaten * health_bonus * 100
-        
-        # Bonus por radio de la estrella (como estaba antes)
-        radius_bonus = star.radius * 5
-        
-        total_energy = base_energy + eating_bonus + radius_bonus
-        return total_energy
-    
-    def calculate_research_effects(self, star: Star) -> Tuple[float, float]:
-        """Calcula los efectos de la investigación en una estrella."""
-        # Energía consumida por investigación
-        energy_consumed = star.amount_of_energy * 2  # Como estaba implementado
-        
-        # Efectos en tiempo de vida (por ahora neutro, se puede extender)
-        life_effect = 0.0  # Puede ser positivo o negativo según configuración futura
-        
-        return energy_consumed, life_effect
     
     def update_health_state(self, current_energy: float, current_life: float) -> str:
         """Actualiza el estado de salud basado en energía y tiempo de vida."""
@@ -180,24 +99,20 @@ class BurroJourneyService:
         
         # Decisión de comer
         should_eat = current_energy < self.energy_eating_threshold
-        kg_capacity = self.calculate_eating_capacity(star, eating_time_available)
+        kg_capacity = calculate_eating_capacity(star, eating_time_available)
         can_eat = should_eat and current_grass >= kg_capacity and kg_capacity > 0
-        
-        # Cálculos de comer
         kg_actually_eaten = kg_capacity if can_eat else 0.0
         energy_gained_eating = 0.0
-        
         if can_eat:
-            energy_gained_eating = self.calculate_energy_from_eating(
-                star, kg_actually_eaten, current_health
+            health_bonus = self.get_health_bonus_percentage(current_health)
+            energy_gained_eating = calculate_energy_from_eating(
+                star, kg_actually_eaten, health_bonus
             )
             current_energy = min(100.0, current_energy + energy_gained_eating)
             current_grass -= kg_actually_eaten
-        
-        # Cálculos de investigación
-        energy_consumed_research, life_effect_research = self.calculate_research_effects(star)
+        energy_consumed_research, life_effect_research = calculate_research_effects(star)
         current_energy = max(0.0, current_energy - energy_consumed_research)
-        current_life += life_effect_research  # Puede ser positivo o negativo
+        current_life += life_effect_research
         
         # Efectos de hipergigante
         is_hypergiant = star.hypergiant
@@ -247,74 +162,46 @@ class BurroJourneyService:
         """Simula un viaje completo aplicando toda la lógica unificada."""
         if not path:
             return []
-        
-    def simulate_journey(self, path: List[Star], burro: BurroAstronauta) -> List[JourneyStep]:
-        """Simula un viaje completo aplicando toda la lógica unificada."""
-        if not path:
-            return []
-        
         try:
-            # Resetear burro a valores del JSON
             self.reset_burro_to_json_values(burro)
-            
-            # Estado inicial del viaje
             current_energy = self.initial_energy
             current_grass = self.initial_grass
             current_health = self.initial_health
             current_life = self.initial_life_remaining
             current_age = self.start_age
-            
             journey_steps = []
-            
             for i, star in enumerate(path):
                 try:
-                    # Si no es la primera estrella, calcular costo de viaje
                     if i > 0:
                         prev_star = path[i-1]
                         travel_distance = self._get_travel_distance(prev_star, star)
-                        
                         if travel_distance:
                             energy_cost, life_cost = self.calculate_travel_cost(travel_distance, current_age)
                             current_energy = max(0.0, current_energy - energy_cost)
                             current_life = max(0.0, current_life - life_cost)
                             current_age += life_cost
-                            
-                            # Actualizar estado después del viaje
                             current_health = self.update_health_state(current_energy, current_life)
-                            
-                            # Agregar información de viaje al paso anterior
                             if journey_steps:
                                 journey_steps[-1].travel_distance_next = travel_distance
                                 journey_steps[-1].energy_consumed_travel = energy_cost
                                 journey_steps[-1].life_consumed_travel = life_cost
-                
-                    # Verificar si murió durante el viaje
                     if current_health == "muerto":
                         break
-                    
-                    # Procesar visita a la estrella
                     step = self.process_star_visit(
                         star, current_energy, current_grass, current_health, current_life, current_age
                     )
                     step.step_number = i + 1
                     journey_steps.append(step)
-                    
-                    # Actualizar estado para siguiente iteración
                     current_energy = step.energy_after_star
                     current_grass = step.grass_after_star
                     current_health = step.health_after_star
                     current_life = step.life_remaining_after_star
-                    
-                    # Verificar si murió en esta estrella
                     if current_health == "muerto":
                         break
-                        
                 except Exception as e:
                     print(f"Error procesando estrella {star.label}: {e}")
-                    return journey_steps  # Retornar pasos hasta donde fue posible
-            
+                    return journey_steps
             return journey_steps
-            
         except Exception as e:
             print(f"Error general en simulate_journey: {e}")
             return []

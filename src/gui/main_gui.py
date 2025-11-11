@@ -9,27 +9,15 @@ Key improvements:
 4. Interface Segregation Principle: Small, focused interfaces
 5. Dependency Inversion Principle: Depends on abstractions, not concretions
 """
+
 import tkinter as tk
 from typing import List, Optional
-from ..core import SpaceMap, BurroAstronauta, Star
-from ..presentation import LifeMonitor
-from ..algorithms import HyperGiantJumpSystem
-
-# Services (following Dependency Inversion Principle)
-from .services import RouteService, VisualizationService, ConfigurationService
+from ..core import Star
+from .gui_init import (
+    initialize_services, initialize_models, initialize_components, initialize_controllers
+)
+from .gui_callbacks import setup_additional_callbacks
 from .services.burro_journey_service import BurroJourneyService
-
-# Components (following Single Responsibility Principle)
-from .components import (
-    RoutePlanningPanel, BurroStatusPanel, LifeMonitoringPanel,
-    ReportsPanel, VisualizationPanel
-)
-
-# Controllers (following Single Responsibility Principle)
-from .controllers import (
-    RouteController, BurroController, LifeMonitoringController,
-    VisualizationController
-)
 
 
 class GalaxiasGUI:
@@ -50,23 +38,24 @@ class GalaxiasGUI:
     def __init__(self, root: tk.Tk):
         self.root = root
         self._setup_window()
-        
-        # Initialize services
-        self._initialize_services()
-        
-        # Initialize models
-        self._initialize_models()
-        
-        # Initialize components
-        self._initialize_components()
-        
-        # Initialize controllers
-        self._initialize_controllers()
-        
-        # Setup UI layout
+        # Modular initialization
+        (self.config_service, self.config, self.space_map, self.route_service,
+         self.visualization_service, self.journey_service) = initialize_services()
+        self.burro, self.hypergiant_system = initialize_models(self.space_map)
+        (self.route_panel, self.burro_panel, self.life_panel,
+         self.reports_panel, self.visualization_panel) = initialize_components(self.space_map, self.burro)
+        (self.route_controller, self.burro_controller, self.life_controller,
+         self.visualization_controller) = initialize_controllers(
+            self.route_service, self.space_map, self.route_panel, self.visualization_panel,
+            self.visualization_service, self.burro, self.burro_panel, self.life_panel)
+        self.route_controller.on_state_change = self._update_all_displays
+        self.burro_controller.on_state_change = self._update_all_displays
+        setup_additional_callbacks(
+            self.route_panel, self.reports_panel, self.life_panel,
+            self.route_controller, self.life_controller,
+            self._start_journey, self._generate_report
+        )
         self._setup_layout()
-        
-        # Initial updates
         self._initial_updates()
     
     def _setup_window(self):
@@ -75,118 +64,6 @@ class GalaxiasGUI:
         self.root.geometry("1400x900")
         self.root.configure(bg='#000033')
     
-    def _initialize_services(self):
-        """Initialize all services following Dependency Inversion Principle."""
-        # Configuration service
-        self.config_service = ConfigurationService()
-        self.config = self.config_service.load_configuration('data/spaceship_config.json')
-        
-        # Space map
-        self.space_map = SpaceMap('data/constellations.json')
-        
-        # Route service
-        self.route_service = RouteService(self.space_map, self.config)
-        
-        # Visualization service
-        self.visualization_service = VisualizationService(self.space_map)
-        
-        # Journey service - Nueva lógica unificada del burro
-        self.journey_service = BurroJourneyService(self.space_map)
-    
-    def _initialize_models(self):
-        """Initialize model objects."""
-        # Burro astronaut
-        self.burro = self.space_map.create_burro_astronauta()
-        
-        # Life monitoring system
-        # TODO: Implementar estos sistemas en la nueva arquitectura
-        # self.life_alert_system = TkinterAlertSystem(self.root)
-        # self.life_sound_manager = BasicSoundManager()
-        # TODO: Reinstaurar life_monitor tras implementar alert/sound systems
-        # self.life_monitor = LifeMonitor(
-        #     alert_system=self.life_alert_system,
-        #     sound_manager=self.life_sound_manager
-        # )
-        # TODO: Implementar estos sistemas en la nueva arquitectura  
-        # self.life_event_logger = LifeEventLogger()
-        
-        # Configure burro with life monitor (TODO: Reimplementar tras nueva arquitectura)
-        # self.burro.set_life_monitor(self.life_monitor)
-        # self.life_monitor.add_observer(self.life_event_logger)
-        
-        # Hypergiant jump system
-        self.hypergiant_system = HyperGiantJumpSystem(self.space_map)
-        # TODO: Implementar HyperGiant GUI en la nueva arquitectura
-        # self.hypergiant_gui = HyperGiantJumpGUI(self.root, self.space_map, self.burro)
-    
-    def _initialize_components(self):
-        """Initialize UI components following Single Responsibility Principle."""
-        # Route planning component
-        self.route_panel = RoutePlanningPanel(self.space_map)
-        
-        # Burro status component
-        self.burro_panel = BurroStatusPanel(self.burro)
-        
-        # Life monitoring component
-        self.life_panel = LifeMonitoringPanel(self.root, self.burro)
-        
-        # Reports component
-        self.reports_panel = ReportsPanel()
-        
-        # Visualization component
-        self.visualization_panel = VisualizationPanel()
-    
-    def _initialize_controllers(self):
-        """Initialize controllers following Single Responsibility Principle."""
-        # Route controller
-        self.route_controller = RouteController(
-            self.route_service, 
-            self.space_map,
-            self.route_panel, 
-            self.visualization_panel,
-            self.visualization_service
-        )
-        
-        # Set callback for auto-update after route calculations
-        self.route_controller.on_state_change = self._update_all_displays
-        
-        # Burro controller
-        self.burro_controller = BurroController(
-            self.burro, 
-            self.burro_panel
-        )
-        
-        # Set callback for auto-update after burro changes
-        self.burro_controller.on_state_change = self._update_all_displays
-        
-        # Life monitoring controller
-        self.life_controller = LifeMonitoringController(
-            self.burro, 
-            self.life_panel
-        )
-        
-        # Visualization controller
-        self.visualization_controller = VisualizationController(
-            self.visualization_service,
-            self.visualization_panel,
-            self.burro
-        )
-        
-        # Setup additional callbacks
-        self._setup_additional_callbacks()
-    
-    def _setup_additional_callbacks(self):
-        """Setup callbacks between controllers."""
-        # Route panel travel callback
-        self.route_panel.on_travel = self._start_journey
-        
-        # Reports panel callback
-        self.reports_panel.on_generate_report = self._generate_report
-        
-        # Life monitoring travel analysis callback
-        self.life_panel.on_analyze_travel = lambda: self.life_controller.analyze_next_travel(
-            self.route_controller.get_current_path()
-        )
     
     def _setup_layout(self):
         """Setup the main UI layout."""
