@@ -1,12 +1,11 @@
 import tkinter as tk
 from .services import RouteService, VisualizationService, ConfigurationService, BurroJourneyService
 from .components import (
-    RoutePlanningPanel, BurroStatusPanel, LifeMonitoringPanel,
+    RoutePlanningPanel, BurroStatusPanel,
     ReportsPanel, VisualizationPanel
 )
 from .controllers import (
-    RouteController, BurroController, LifeMonitoringController,
-    VisualizationController
+    RouteController, BurroController, VisualizationController
 )
 from ..core import SpaceMap, BurroAstronauta
 from ..algorithms import HyperGiantJumpSystem
@@ -28,14 +27,12 @@ def initialize_models(space_map):
 def initialize_components(space_map, burro):
     route_panel = RoutePlanningPanel(space_map)
     burro_panel = BurroStatusPanel(burro)
-    life_panel = LifeMonitoringPanel(None, burro)
     reports_panel = ReportsPanel()
     visualization_panel = VisualizationPanel()
-    return route_panel, burro_panel, life_panel, reports_panel, visualization_panel
+    return route_panel, burro_panel, reports_panel, visualization_panel
 
-def initialize_controllers(route_service, space_map, route_panel, visualization_panel, visualization_service, burro, burro_panel, life_panel):
+def initialize_controllers(route_service, space_map, route_panel, visualization_panel, visualization_service, burro, burro_panel):
     route_controller = RouteController(route_service, space_map, route_panel, visualization_panel, visualization_service)
     burro_controller = BurroController(burro, burro_panel)
-    life_controller = LifeMonitoringController(burro, life_panel)
     visualization_controller = VisualizationController(visualization_service, visualization_panel, burro)
-    return route_controller, burro_controller, life_controller, visualization_controller
+    return route_controller, burro_controller, visualization_controller

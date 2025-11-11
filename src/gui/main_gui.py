@@ -42,17 +42,15 @@ class GalaxiasGUI:
         (self.config_service, self.config, self.space_map, self.route_service,
          self.visualization_service, self.journey_service) = initialize_services()
         self.burro, self.hypergiant_system = initialize_models(self.space_map)
-        (self.route_panel, self.burro_panel, self.life_panel,
-         self.reports_panel, self.visualization_panel) = initialize_components(self.space_map, self.burro)
-        (self.route_controller, self.burro_controller, self.life_controller,
-         self.visualization_controller) = initialize_controllers(
+        (self.route_panel, self.burro_panel, self.reports_panel, self.visualization_panel) = initialize_components(self.space_map, self.burro)
+        (self.route_controller, self.burro_controller, self.visualization_controller) = initialize_controllers(
             self.route_service, self.space_map, self.route_panel, self.visualization_panel,
-            self.visualization_service, self.burro, self.burro_panel, self.life_panel)
+            self.visualization_service, self.burro, self.burro_panel)
         self.route_controller.on_state_change = self._update_all_displays
         self.burro_controller.on_state_change = self._update_all_displays
         setup_additional_callbacks(
-            self.route_panel, self.reports_panel, self.life_panel,
-            self.route_controller, self.life_controller,
+            self.route_panel, self.reports_panel,
+            self.route_controller,
             self._start_journey, self._generate_report
         )
         self._setup_layout()
@@ -84,7 +82,6 @@ class GalaxiasGUI:
         # Create component widgets
         self.route_panel.create_widgets(left_panel).pack(fill=tk.BOTH, padx=10, pady=5)
         self.burro_panel.create_widgets(left_panel).pack(fill=tk.BOTH, padx=10, pady=5)
-        self.life_panel.create_widgets(left_panel).pack(fill=tk.X, padx=10, pady=5)
         self.reports_panel.create_widgets(left_panel).pack(fill=tk.BOTH, padx=10, pady=5)
         
         # Right panel - Visualization
@@ -105,14 +102,9 @@ class GalaxiasGUI:
         try:
             # Update burro status
             self.burro_controller.update_display()
-            
-            # Update life monitoring
-            self.life_controller.update_display()
-            
             # Update visualization with current burro position AND current path
             current_path = self.route_controller.get_current_path()
             self.visualization_controller.update_visualization(path=current_path)
-            
             # Force UI refresh
             self.root.update_idletasks()
         except Exception as e:

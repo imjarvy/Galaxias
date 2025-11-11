@@ -1,345 +1,208 @@
-# Galaxias - Sistema Interactivo de Rutas Espaciales 🫏🚀
+# Galaxias: Simulador Interactivo de Rutas Espaciales
 
-Sistema interactivo en Python que simula rutas espaciales entre estrellas de constelaciones cercanas en la Vía Láctea, con un burro astronauta como protagonista.
+## Resumen del Proyecto
 
-## Características Principales
+Galaxias es un sistema interactivo en Python que simula rutas espaciales entre estrellas de constelaciones cercanas en la Vía Láctea, protagonizado por un burro astronauta. Permite planificar, visualizar y analizar viajes espaciales considerando recursos, peligros y eventos dinámicos como cometas.
 
-### 🌟 Funcionalidades Implementadas
+## Objetivo
 
-1. **Gestión de Rutas Espaciales**
-   - Cálculo de rutas óptimas entre estrellas usando el algoritmo de Dijkstra
-   - Visualización de conexiones entre estrellas de diferentes constelaciones
-   - Métricas de distancia, peligro y costo de viaje
+Facilitar la exploración y análisis de rutas óptimas entre estrellas, integrando visualización, gestión de recursos y eventos científicos en un entorno educativo y lúdico.
 
-2. **Burro Astronauta**
-   - Sistema de salud, combustible, comida y oxígeno
-   - Consumo de recursos basado en distancia y nivel de peligro
-   - Historial de viajes
-   - Sistema de recarga de recursos
+## Funcionalidad Principal
+- Cálculo de rutas óptimas entre estrellas (Dijkstra)
+- Visualización interactiva del mapa estelar
+- Gestión de recursos del burro astronauta (salud, combustible, comida, oxígeno)
+- Bloqueo dinámico de rutas por cometas
+- Parámetros científicos configurables
+- Interfaz gráfica (GUI) y modo línea de comandos (CLI)
+- Reportes visuales y métricas de viaje
 
-3. **Gestión de Cometas**
-   - Bloqueo dinámico de rutas por cometas
-   - Agregar y remover cometas en tiempo real
-   - Recálculo automático de rutas alternativas
-
-4. **Parámetros Científicos**
-   - Constantes físicas configurables
-   - Tasas de consumo de recursos ajustables
-   - Factor de curvatura (warp) y eficiencia de escudos
-
-5. **Visualizaciones**
-   - Mapa estelar interactivo con matplotlib
-   - Gráficos de estado de recursos
-   - Reportes visuales completos de viajes
-   - Colores específicos por tipo de estrella
-
-6. **Interfaz Gráfica (GUI)**
-   - Interfaz completa con tkinter
-   - Visualización en tiempo real del mapa
-   - Controles para planificación y navegación
-   - Panel de estado del burro astronauta
-
-7. **Múltiples Modos de Uso**
-   - Modo GUI (interfaz gráfica)
-   - Modo CLI (línea de comandos)
-   - Modo DEMO (demostración automática)
-
-## Estructura del Proyecto
-
-```
-Galaxias/
-├── data/
-│   ├── constellations.json      # Datos de constelaciones y estrellas
-│   └── spaceship_config.json    # Configuración del burro astronauta
-├── src/
-│   ├── models.py                # Clases principales (Star, Route, SpaceshipDonkey)
-│   ├── route_calculator.py     # Algoritmo de cálculo de rutas
-│   ├── visualizer.py           # Visualizaciones con matplotlib
-│   └── gui.py                  # Interfaz gráfica con tkinter
-├── assets/                      # Imágenes y reportes generados
-├── docs/                        # Documentación adicional
-├── main.py                      # Punto de entrada principal
-├── requirements.txt            # Dependencias Python
-└── README.md                   # Este archivo
-```
-
-## Instalación
-
-### Requisitos Previos
-
+## Requisitos
 - Python 3.8 o superior
 - pip (gestor de paquetes de Python)
 
-### Instalación de Dependencias
+### Librerías principales sugeridas
+- matplotlib (visualización)
+- numpy (cálculos numéricos)
+- networkx (algoritmos de grafos)
+- Pillow (procesamiento de imágenes)
 
+Instala las dependencias recomendadas con:
 ```bash
-# Clonar el repositorio
-git clone https://github.com/imjarvy/Galaxias.git
-cd Galaxias
-
-# Instalar dependencias
-pip install -r requirements.txt
+pip install matplotlib numpy networkx Pillow
 ```
 
-### Dependencias
+## Instalación
+1. Clona el repositorio:
+   ```bash
+   git clone https://github.com/imjarvy/Galaxias.git
+   cd Galaxias
+   ```
+2. Instala las dependencias (ver arriba).
+3. Ejecuta el sistema:
+   ```bash
+   python main.py
+   ```
 
-- `matplotlib>=3.7.0` - Visualizaciones gráficas
-- `numpy>=1.24.0` - Cálculos numéricos
-- `networkx>=3.1` - Algoritmos de grafos
-- `Pillow>=10.0.0` - Procesamiento de imágenes
+## Estructura de Carpetas
 
-## Uso
-
-### Modo GUI (Recomendado)
-
-```bash
-python main.py
+```text
+Galaxias/
+├── assets/                        # Imágenes y reportes generados
+├── data/                          # Datos de constelaciones y configuración
+│   ├── constellations.json            # Definición de estrellas y rutas
+│   └── spaceship_config.json          # Configuración del burro astronauta
+├── docs/                          # Documentación técnica y guías de usuario
+│   ├── TECHNICAL.md
+│   ├── USER_GUIDE.md
+│   └── VIDEO_GUIDE.md
+├── src/                           # Código fuente principal
+│   ├── algorithms/                    # Algoritmos de rutas, saltos y optimización
+│   │   ├── __init__.py
+│   │   ├── donkey_optimization.py     # Optimización de rutas para máximo de estrellas visitadas
+│   │   ├── hypergiant_jump.py         # Saltos hipergigantes entre constelaciones
+│   │   └── route_calculator.py        # Algoritmos de cálculo de rutas y análisis de caminos
+│   ├── core/    # Modelos y lógica central del sistema (estrellas, rutas, burro, cometas, validaciones e impacto de investigación)
+│   │   ├── __init__.py
+│   │   ├── models.py       # Clases principales: Star, Route, BurroAstronauta, Comet, SpaceMap
+│   │   ├── comet_impact_system.py     # Gestión de impacto de cometas sobre rutas planificadas
+│   │   └── research_impact_validator.py # Validación/modelado de impacto de investigación científica
+│   ├── gui/                   # Interfaz gráfica, paneles, controladores y servicios
+│   │   ├── __init__.py
+│   │   ├── gui_init.py                # Inicialización de la interfaz gráfica
+│   │   ├── main_gui.py                # Ciclo principal de la GUI
+│   │   ├── gui_callbacks.py           # Callbacks y eventos de la GUI
+│   │   ├── components/                # Paneles visuales reutilizables
+│   │   │   ├── __init__.py
+│   │   │   ├── burro_status_panel.py      # Panel de estado del burro astronauta
+│   │   │   ├── reports_panel.py           # Panel de reportes y métricas
+│   │   │   ├── route_planning_panel.py    # Panel de planificación de rutas
+│   │   │   └── visualization_panel.py     # Panel de visualización gráfica
+│   │   ├── controllers/               # Controladores de lógica de interacción
+│   │   │   ├── __init__.py
+│   │   │   ├── burro_controller.py        # Controlador del burro astronauta
+│   │   │   ├── life_monitoring_controller.py # Controlador de monitoreo de vida
+│   │   │   ├── route_controller.py        # Controlador de rutas
+│   │   │   └── visualization_controller.py # Controlador de visualización
+│   │   ├── interfaces/                # Interfaces abstractas para la GUI
+│   │   │   ├── __init__.py
+│   │   │   ├── component_interface.py     # Interfaz base para componentes visuales
+│   │   │   ├── route_service_interface.py    # Interfaz para servicios de rutas
+│   │   │   └── visualization_service_interface.py   # Interfaz para servicios de visualización
+│   │   ├── services/                  # Servicios auxiliares para la GUI
+│   │   │   ├── __init__.py
+│   │   │   ├── burro_journey_service.py   # Servicio de gestión de viajes del burro
+│   │   │   ├── configuration_service.py   # Servicio de configuración de la GUI
+│   │   │   ├── route_service.py           # Servicio de cálculo de rutas
+│   │   │   └── visualization_service.py   # Servicio de visualización y renderizado
+│   ├── parameter_editor_simple/       # Editor para modificar parámetros científicos y de simulación
+│   │   ├── __init__.py
+│   │   ├── editor.py         # Interfaz principal del editor de parámetros científicos
+│   │   ├── comet_manager.py           # Gestión de cometas que afectan rutas
+│   │   ├── models.py                 # Modelos de datos para configuraciones y presets
+│   │   ├── presets.py                 # Presets y configuraciones predefinidas
+│   │   ├── preview.py                 # Vista previa de efectos de parámetros editados
+│   │   └── star_config.py             # Editor de parámetros específicos de estrellas
+│   ├── presentation/                  # Visualización y presentación de resultados
+│   │   ├── gui_hypergiant_jump.py     # Interfaz gráfica para saltos hipergigantes
+│   │   ├── gui_life_monitor.py      # Interfaz gráfica para monitoreo de vida/recursos
+│   │   ├── life_monitor.py            # Lógica de monitoreo de vida
+│   │   └── visualizer.py              # Utilidades de visualización de datos
+│   ├── route_tools/                   # Herramientas de rutas (max visit, min cost)
+│   │   ├── __init__.py                # Inicialización del módulo
+│   │   ├── max_visit_route.py     # Ruta que maximiza el número de estrellas visitadas
+│   │   └── min_cost_route.py          # Ruta de menor gasto posible
+│   └── utils/                         # Utilidades, constantes y validadores
+│       ├── __init__.py                # Inicialización del módulo
+│       ├── constants.py               # Constantes globales del sistema
+│       ├── json_handler.py            # Utilidades para manejo de archivos JSON
+│       ├── validators.py              # Validadores y utilidades de validación
+│       └── burro_utils/               # Utilidades especializadas para el burro astronauta
+│           ├── __init__.py            # Inicialización del submódulo
+│           ├── burro_math.py          # Cálculos de consumo, energía y efectos de acciones
+│           └── journey_step.py        # Representación detallada de cada paso del viaje
+├── main.py                        # Punto de entrada principal
+├── README.md                      # Este archivo
 ```
 
-Esto abrirá la interfaz gráfica donde puedes:
-- Seleccionar estrellas de origen y destino
-- Calcular rutas óptimas
-- Iniciar viajes
-- Agregar/remover cometas
-- Ver parámetros científicos
-- Generar reportes visuales
+### Descripción de Carpetas/Archivos
+- **assets/**: Recursos gráficos y reportes generados por el sistema.
+- **data/**: Archivos JSON con datos de constelaciones y configuración del burro astronauta.
+- **docs/**: Documentación técnica, guías de usuario y video.
+- **src/**: Todo el código fuente modularizado:
+   - **algorithms/**: Algoritmos de rutas, saltos y optimización.
+      - **donkey_optimization.py**: Implementa el sistema de optimización de rutas para el Burro Astronauta. Calcula la ruta que permite visitar la mayor cantidad de estrellas antes de que el burro muera, considerando recursos y beneficios de cada estrella. Incluye simulación de viajes, cálculo de beneficios netos al “comer” estrellas, y búsqueda de la mejor estrella siguiente en cada paso. Permite encontrar la mejor estrella para iniciar el viaje y provee una función de utilidad para optimizar rutas fácilmente.
+      - **hypergiant_jump.py**: Gestiona la lógica de “saltos hipergigantes” entre constelaciones (cambios de galaxia). Detecta cuándo un viaje requiere pasar por una estrella hipergigante, fuerza el paso por ella y aplica beneficios especiales (recarga de energía, duplicación de pasto). Permite planificar rutas intergalácticas, encontrar hipergigantes accesibles y destinos posibles, y simular el salto con todos sus efectos. Incluye funciones para obtener estadísticas de hipergigantes y una demo ejecutable desde línea de comandos.
+      - **route_calculator.py**: Contiene los algoritmos principales para calcular rutas óptimas entre estrellas usando Dijkstra y otras estrategias. Permite calcular distancias, peligros, energía y recursos necesarios para cada ruta. Incluye funciones para encontrar todas las estrellas alcanzables, secuencias óptimas de “comidas”, y rutas que maximizan visitas o minimizan el gasto, usando parámetros del JSON de configuración. Centraliza la lógica de análisis de caminos, heurísticas y restricciones de recursos.
+   - **core/**: Modelos y lógica central del sistema (estrellas, rutas, burro, cometas, validaciones e impacto de investigación).
+      - **models.py**: Define las clases principales del sistema: `Star` (estrella), `Route` (ruta entre estrellas), `BurroAstronauta` (burro astronauta con recursos, salud y lógica de viaje), `Comet` (cometa que puede bloquear rutas), y `SpaceMap` (mapa espacial que gestiona estrellas, rutas, cometas y la creación del burro). Incluye lógica para consumir recursos, monitorear vida, restaurar estado, verificar bidireccionalidad de rutas y cargar datos desde JSON.
+      - **comet_impact_system.py**: Gestiona el impacto de cometas sobre rutas planificadas. Permite invalidar rutas, buscar segmentos afectados, calcular rutas alternativas y notificar a listeners sobre cambios. Incluye interfaces y clases para validación y cálculo de rutas, así como un gestor principal de impacto de cometas.
+      - **research_impact_validator.py**: Valida y modela el impacto de la investigación científica sobre la salud y vida del burro astronauta para cada estrella. Permite configurar, calcular y exportar/importar los efectos de la investigación (salud, vida, eficiencia energética, riesgo) tanto por estrella como para rutas completas. Incluye una interfaz gráfica para editar y validar estos impactos.
+   - **gui/**: Interfaz gráfica, paneles, controladores y servicios para la interacción visual del usuario.
+      - **gui_init.py, main_gui.py, gui_callbacks.py**: Inicialización, ciclo principal y callbacks de la interfaz gráfica.
+      - **components/**: Paneles visuales reutilizables de la GUI.
+         - **burro_status_panel.py**: Panel de estado del burro astronauta.
+         - **reports_panel.py**: Panel para mostrar reportes y métricas.
+         - **route_planning_panel.py**: Panel para planificación y visualización de rutas.
+         - **visualization_panel.py**: Panel de visualización gráfica del mapa estelar.
+      - **controllers/**: Controladores que gestionan la lógica de interacción entre la GUI y el modelo de datos.
+         - **burro_controller.py**: Controlador de acciones y estado del burro astronauta.
+         - **life_monitoring_controller.py**: Controlador de monitoreo de vida y recursos.
+         - **route_controller.py**: Controlador de planificación y cálculo de rutas.
+         - **visualization_controller.py**: Controlador de visualización y actualización gráfica.
+      - **interfaces/**: Interfaces abstractas para componentes y servicios de la GUI.
+         - **component_interface.py**: Interfaz base para componentes visuales.
+         - **route_service_interface.py**: Interfaz para servicios de rutas.
+         - **visualization_service_interface.py**: Interfaz para servicios de visualización.
+      - **services/**: Servicios auxiliares para la lógica de la GUI.
+         - **burro_journey_service.py**: Servicio para gestionar los viajes del burro.
+         - **configuration_service.py**: Servicio para configuración y parámetros de la GUI.
+         - **route_service.py**: Servicio para cálculo y gestión de rutas desde la GUI.
+         - **visualization_service.py**: Servicio para renderizado y actualización de visualizaciones.
+   - **parameter_editor_simple/**: Editor para modificar parámetros científicos y de simulación.
+      - **editor.py**: Interfaz principal del editor de parámetros científicos, permite modificar y guardar configuraciones que afectan la simulación.
+      - **comet_manager.py**: Herramienta para gestionar la creación, edición y eliminación de cometas que afectan rutas.
+      - **models.py**: Modelos de datos para representar configuraciones, presets y parámetros editables.
+      - **presets.py**: Presets y configuraciones predefinidas para parámetros científicos y de simulación.
+      - **preview.py**: Vista previa de los efectos de los parámetros editados antes de aplicarlos a la simulación.
+      - **star_config.py**: Editor y gestor de parámetros específicos de estrellas (energía, tiempo de consumo, etc.).
+  - **presentation/**: Visualización y presentación de resultados.
+     - **gui_hypergiant_jump.py**: Implementa la interfaz gráfica para gestionar y visualizar los saltos hipergigantes, permitiendo al usuario interactuar con eventos espaciales de gran escala.
+     - **gui_life_monitor.py**: Proporciona una interfaz gráfica para el monitoreo de vida y recursos, mostrando información crítica sobre el estado de la simulación o misión.
+     - **life_monitor.py**: Contiene la lógica central para el monitoreo de vida, recursos y condiciones, sirviendo de backend para las interfaces gráficas relacionadas.
+     - **visualizer.py**: Ofrece utilidades y funciones para la visualización de datos, gráficos y resultados, facilitando la interpretación visual de la información generada por el sistema.
+  - **route_tools/**: Herramientas para cálculo de rutas específicas.
+     - **max_visit_route.py**: Calcula la ruta que permite visitar el mayor número de estrellas posibles desde una estrella inicial, usando solo parámetros inmutables. Incluye lógica de saltos hipergigantes, beneficios de recursos y salida detallada en formato JSON.
+     - **min_cost_route.py**: Sistema de optimización de rutas con el criterio de menor gasto posible, considerando reglas de consumo, salud, saltos hipergigantes y acciones detalladas en cada estrella. Permite analizar el recorrido más eficiente en recursos.
+     - **__init__.py**: Inicialización del módulo de herramientas de rutas.
+  - **utils/**: Funciones utilitarias, constantes y validadores.
+     - **constants.py**: Centraliza todas las constantes y configuraciones globales del sistema (rutas, colores, parámetros de visualización, etc.).
+     - **json_handler.py**: Utilidades para la carga y guardado de archivos JSON, con manejo de errores y funciones específicas para constelaciones y configuración de la nave.
+     - **validators.py**: Proporciona funciones de validación para IDs, coordenadas y otros datos, lanzando excepciones personalizadas en caso de error.
+     - **burro_utils/**: Utilidades especializadas para el burro astronauta:
+        - **burro_math.py**: Funciones para calcular capacidad de consumo, energía obtenida al comer, y efectos de investigación sobre estrellas.
+        - **journey_step.py**: Define la estructura y cálculos detallados de cada paso del viaje del burro, incluyendo recursos, bonificaciones y efectos de acciones.
+        - **__init__.py**: Inicialización del submódulo de utilidades del burro.
+     - **__init__.py**: Inicialización del módulo de utilidades.
+- **main.py**: Script principal y punto de entrada del sistema. Permite iniciar la interfaz gráfica (GUI), ejecutar el sistema en modo línea de comandos (CLI) o lanzar una demostración completa. Gestiona la carga de configuraciones, inicialización de modelos, cálculo y optimización de rutas, visualización de mapas y recursos, y la integración de eventos como cometas. Ofrece:
+   - `python main.py` para iniciar la GUI interactiva.
+   - `python main.py --cli` para modo consola con selección de rutas y optimización.
+   - `python main.py --demo` para ejecutar una demostración automatizada con generación de visualizaciones y reportes.
+- **README.md**: Documentación principal del proyecto.
 
-### Modo CLI
-
-```bash
-python main.py --cli
-```
-
-Modo interactivo de línea de comandos para usuarios avanzados.
-
-### Modo Demo
-
-```bash
-python main.py --demo
-```
-
-Ejecuta una demostración automática del sistema con:
-- Cálculo de rutas
-- Bloqueo de rutas con cometas
-- Simulación de viaje completo
-- Generación de visualizaciones
-
-## Datos de Constelaciones
-
-### Constelaciones Incluidas
-
-1. **Orión** - 3 estrellas
-   - Betelgeuse (gigante roja)
-   - Rigel (supergigante azul)
-   - Bellatrix (gigante azul)
-
-2. **Canis Major** - 2 estrellas
-   - Sirius (secuencia principal)
-   - Adhara (gigante azul)
-
-3. **Ursa Major** - 3 estrellas
-   - Dubhe (gigante)
-   - Merak (secuencia principal)
-   - Alioth (secuencia principal)
-
-4. **Lyra** - 1 estrella
-   - Vega (secuencia principal)
-
-### Formato JSON
-
-Las estrellas se definen con:
-- `id`: Identificador único
-- `name`: Nombre de la estrella
-- `x`, `y`: Coordenadas en el mapa
-- `type`: Tipo estelar
-- `distance_ly`: Distancia en años luz
-
-Las rutas incluyen:
-- `from`, `to`: IDs de estrellas conectadas
-- `distance`: Distancia de viaje
-- `danger_level`: Nivel de peligro (1-5)
-
-## Configuración del Burro Astronauta
-
-El archivo `spaceship_config.json` contiene:
-
-### Recursos Iniciales
-- Salud: 100
-- Combustible: 1000
-- Comida: 50
-- Oxígeno: 100
-
-### Tasas de Consumo
-- Combustible: 2 unidades por unidad de distancia
-- Comida: 0.1 unidades por unidad de distancia
-- Oxígeno: 0.5 unidades por unidad de distancia
-- Salud: 5 puntos por nivel de peligro
-
-### Parámetros Científicos
-- Constante gravitacional: 6.674×10⁻¹¹
-- Velocidad de la luz: 299,792 km/s
-- Factor de curvatura: 1.5
-- Eficiencia de escudos: 0.8
-
-## Algoritmo de Rutas
-
-El sistema utiliza el **algoritmo de Dijkstra** para encontrar la ruta óptima entre estrellas, considerando:
-
-1. **Distancia física** entre estrellas
-2. **Nivel de peligro** de cada ruta
-3. **Rutas bloqueadas** por cometas
-4. **Consumo de recursos** del burro astronauta
-
-### Función de Costo
-
-```
-Costo = (Distancia × Tasa_Combustible) + (Peligro × Penalización_Peligro)
-```
-
-## Visualizaciones
-
-### Mapa Estelar
-
-- Estrellas coloreadas según su tipo
-- Rutas visualizadas como líneas grises
-- Rutas bloqueadas en rojo punteado
-- Ruta óptima resaltada en cyan
-- Ubicación del burro astronauta marcada con estrella dorada
-
-### Reporte de Viaje
-
-Incluye:
-- Información de la ruta recorrida
-- Estadísticas del viaje
-- Recursos consumidos
-- Estado actual del burro astronauta
-- Historial de ubicaciones visitadas
-
-## Ejemplos de Uso
-
-### Ejemplo 1: Calcular Ruta Simple
-
-```python
-from src.models import SpaceMap, SpaceshipDonkey
-from src.route_calculator import RouteCalculator
-import json
-
-# Cargar configuración
-with open('data/spaceship_config.json', 'r') as f:
-    config = json.load(f)
-
-# Inicializar mapa
-space_map = SpaceMap('data/constellations.json')
-
-# Obtener estrellas
-betelgeuse = space_map.get_star('orion_1')
-sirius = space_map.get_star('canis_1')
-
-# Calcular ruta
-calculator = RouteCalculator(space_map, config)
-path, cost = calculator.dijkstra(betelgeuse, sirius)
-
-print(f"Ruta: {' → '.join([s.name for s in path])}")
-print(f"Costo: {cost:.2f}")
-```
-
-### Ejemplo 2: Agregar Cometa
-
-```python
-from src.models import Comet
-
-# Crear cometa que bloquea una ruta
-halley = Comet(name="Halley", blocked_routes=[('orion_2', 'canis_1')])
-space_map.add_comet(halley)
-
-# La ruta se recalculará automáticamente evitando el bloqueo
-```
-
-### Ejemplo 3: Simular Viaje
-
-```python
-# Crear burro astronauta
-donkey = SpaceshipDonkey(
-    name="Burro Astronauta",
-    health=100,
-    fuel=1000,
-    food=50,
-    oxygen=100
-)
-
-# Viajar por la ruta
-for i in range(len(path) - 1):
-    current = path[i]
-    next_star = path[i + 1]
-    
-    # Encontrar ruta
-    route = next((r for r in space_map.routes 
-                  if (r.from_star == current and r.to_star == next_star) or
-                     (r.to_star == current and r.from_star == next_star)), None)
-    
-    if route:
-        donkey.consume_resources(route.distance, route.danger_level, config)
-        donkey.current_location = next_star
-
-print(f"Salud final: {donkey.health:.1f}")
-```
-
-## Control de Versiones
-
-El proyecto utiliza Git para control de versiones. Commits importantes:
-
-- Estructura inicial del proyecto
-- Implementación de modelos de datos
-- Algoritmo de cálculo de rutas
-- Sistema de visualización
-- Interfaz gráfica
-- Documentación completa
-
-## Video Descriptivo
-
-Para ver una demostración en video del sistema, ejecute:
-
-```bash
-python main.py --demo
-```
-
-Esto generará visualizaciones que muestran:
-1. Mapa estelar con rutas
-2. Cálculo de ruta óptima
-3. Bloqueo de rutas con cometas
-4. Simulación de viaje
-5. Estado final de recursos
+## Uso Básico
+- Ejecuta `python main.py` para abrir la interfaz gráfica.
+- Usa los paneles para planificar rutas, gestionar recursos y visualizar el mapa estelar.
+- Consulta la documentación en `docs/` para detalles avanzados y ejemplos.
 
 ## Contribución
-
-Para contribuir al proyecto:
-
-1. Fork el repositorio
-2. Crea una rama para tu feature (`git checkout -b feature/AmazingFeature`)
-3. Commit tus cambios (`git commit -m 'Add some AmazingFeature'`)
-4. Push a la rama (`git push origin feature/AmazingFeature`)
-5. Abre un Pull Request
+1. Haz un fork del repositorio.
+2. Crea una rama para tu funcionalidad.
+3. Realiza tus cambios y haz commit.
+4. Abre un Pull Request.
 
 ## Licencia
-
-Este proyecto es de código abierto y está disponible para uso educativo y de investigación.
-
-## Autor
-
-**imjarvy** - Sistema Galaxias
-
-## Agradecimientos
-
-- Inspirado en la exploración espacial y la ciencia ficción
-- Datos estelares basados en constelaciones reales de la Vía Láctea
-- El burro astronauta representa la curiosidad y perseverancia en la exploración
-
-## Contacto
-
-Para preguntas, sugerencias o reportar problemas:
-- Abrir un issue en GitHub
-- Contribuir al proyecto
+Proyecto de código abierto para fines educativos e investigativos.
 
 ---
-
-🫏 **¡Que el burro astronauta te acompañe en tus viajes espaciales!** 🚀
+¡Que el burro astronauta te acompañe en tus viajes espaciales!
