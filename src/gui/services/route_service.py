@@ -32,18 +32,6 @@ class RouteService(IRouteService):
         except Exception as e:
             return None, {"error": str(e)}
     
-    def calculate_eating_route(self, start_id: str) -> Tuple[Optional[List[Star]], Optional[Dict[str, Any]]]:
-        """Calculate route optimized for star eating."""
-        try:
-            optimal_path, stats = self.optimizer.optimize_route_from_json_data(start_id)
-            
-            if stats.get('error'):
-                return None, stats
-            
-            return optimal_path, stats
-        except Exception as e:
-            return None, {"error": str(e)}
-    
     def calculate_max_visit_route(self, start: Star) -> Tuple[Optional[List[Star]], Optional[Dict[str, Any]]]:
         """Calculate route that maximizes star visits."""
         try:

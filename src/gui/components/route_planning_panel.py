@@ -77,11 +77,6 @@ class RoutePlanningPanel(IComponent):
                  command=self._handle_calculate_route,
                  bg='#4444FF', fg='white', font=('Arial', 10, 'bold'),
                  relief=tk.RAISED, borderwidth=2).pack(pady=5)
-        
-        tk.Button(self.frame, text="Optimizar Ruta para Comer Estrellas",
-                 command=self._handle_optimize_eating,
-                 bg='#FF44FF', fg='white', font=('Arial', 10, 'bold'),
-                 relief=tk.RAISED, borderwidth=2).pack(pady=5)
 
         tk.Button(self.frame, text="Maximizar Estrellas Visitadas",
                  command=self._handle_max_visit_route,
@@ -120,11 +115,6 @@ class RoutePlanningPanel(IComponent):
         """Handle calculate route button click."""
         if self.on_calculate_route:
             self.on_calculate_route(self.start_star_var.get(), self.end_star_var.get())
-    
-    def _handle_optimize_eating(self):
-        """Handle optimize eating route button click."""
-        if self.on_optimize_eating:
-            self.on_optimize_eating(self.start_star_var.get())
     
     def _handle_max_visit_route(self):
         """Handle max visit route button click."""

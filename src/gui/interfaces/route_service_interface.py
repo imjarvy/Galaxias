@@ -16,11 +16,6 @@ class IRouteService(ABC):
         pass
     
     @abstractmethod
-    def calculate_eating_route(self, start_id: str) -> Tuple[Optional[List[Star]], Optional[Dict[str, Any]]]:
-        """Calculate route optimized for star eating."""
-        pass
-    
-    @abstractmethod
     def calculate_max_visit_route(self, start: Star) -> Tuple[Optional[List[Star]], Optional[Dict[str, Any]]]:
         """Calculate route that maximizes star visits."""
         pass

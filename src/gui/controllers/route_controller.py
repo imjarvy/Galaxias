@@ -58,7 +58,6 @@ class RouteController:
     def _setup_callbacks(self):
         """Setup callbacks for the route panel."""
         self.route_panel.on_calculate_route = self.calculate_optimal_route
-        self.route_panel.on_optimize_eating = self.calculate_eating_route
         self.route_panel.on_max_visit_route = self.calculate_max_visit_route
         self.route_panel.on_min_cost_route = self.calculate_min_cost_route
         self.route_panel.on_edit_parameters = self.edit_research_parameters
@@ -108,40 +107,7 @@ class RouteController:
         
         messagebox.showinfo("Ruta Calculada", 
                            f"Ruta encontrada con {stats.get('num_jumps', 0)} saltos")
-    
-    def calculate_eating_route(self, start_text: str):
-        """Calculate route optimized for eating stars."""
-        start_id = self.route_service.extract_star_id_from_text(start_text)
-        
-        if not start_id:
-            messagebox.showerror("Error", "Seleccione estrella de origen")
-            return
-        
-        path, stats = self.route_service.calculate_eating_route(start_id)
-        
-        if not path:
-            error_msg = stats.get('error', 'No se pudo encontrar una ruta óptima') if stats else 'Error desconocido'
-            messagebox.showerror("Error", error_msg)
-            return
-        
-        # Update current path
-        self.current_path = path
-        self.current_path_stats = self.route_service.calculate_path_stats(path)
-        
-        # Register for comet impact analysis
-        self._register_active_journey(path, "eating_optimization")
-        
-        # Update info display
-        self._update_eating_route_info(stats)
-        self._update_route_visualization(path)
-        self.route_panel.set_travel_enabled(True)
-        
-        # Notify state change for GUI updates
-        if self.on_state_change:
-            self.on_state_change()
-        
-        messagebox.showinfo("Ruta Optimizada", 
-                           f"Ruta optimizada encontrada: {stats.get('stars_visited', 0)} estrellas visitadas")
+
     
     def calculate_max_visit_route(self, start_text: str):
         """Calculate route that maximizes star visits."""
